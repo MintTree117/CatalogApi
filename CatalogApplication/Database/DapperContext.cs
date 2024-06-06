@@ -5,7 +5,7 @@ using Microsoft.Data.SqlClient;
 
 namespace CatalogApplication.Database;
 
-public sealed class DapperContext : IDapperContext
+internal sealed class DapperContext : IDapperContext
 {
     // Fields
     const string InvalidConnectionMessage = "Invalid Connection State: ";
