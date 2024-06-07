@@ -69,4 +69,22 @@ internal sealed class DapperContext : IDapperContext
             return Reply<T>.None( ExceptionMessage );
         }
     }
+    public async Task<Reply<int>> ExecuteAsync( string sql, DynamicParameters? parameters = null )
+    {
+        await using SqlConnection c = await GetOpenConnection();
+
+        if (c.State != ConnectionState.Open)
+            return Reply<int>.None( InvalidConnectionMessage + c.State );
+
+        try {
+            int result = await c.ExecuteAsync( sql, parameters, commandType: CommandType.Text );
+            return result > 0
+                ? Reply<int>.With( result )
+                : Reply<int>.None( "No Rows Altered" );
+        }
+        catch ( Exception e ) {
+            Console.WriteLine( e );
+            return Reply<int>.None( ExceptionMessage );
+        }
+    }
 }
