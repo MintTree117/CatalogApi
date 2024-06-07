@@ -5,7 +5,6 @@ internal readonly record struct Product(
     Guid BrandId,
     Guid PriceRangeId,
     Guid RatingLevelId,
-    Guid ShippingTimespanId,
     bool IsFeatured,
     bool IsOnSale,
     string Name,

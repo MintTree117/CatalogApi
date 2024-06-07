@@ -1,8 +1,8 @@
 using System.Data;
 using System.Text;
 using CatalogApplication.Database;
-using CatalogApplication.Types.Filters.Dtos;
 using CatalogApplication.Types.Products.Dtos;
+using CatalogApplication.Types.Products.Models;
 using Dapper;
 using Microsoft.Data.SqlClient;
 
@@ -48,7 +48,7 @@ internal sealed class ProductSearchRepository
         _provider = provider;
         _logger = logger;
     }
-    internal async Task<SearchReply?> GetSearch( SearchRequest request )
+    internal async Task<SearchQueryReply?> GetSearch( SearchQueryRequest queryRequest )
     {
         try {
             IDapperContext dapper = IDapperContext.GetContext( _provider );
@@ -59,15 +59,15 @@ internal sealed class ProductSearchRepository
                 return null;
             }
 
-            BuildSqlQuery( request, out string sql, out DynamicParameters parameters );
+            BuildSqlQuery( queryRequest, out string sql, out DynamicParameters parameters );
 
             await using SqlMapper.GridReader multi = await connection.QueryMultipleAsync( sql, parameters, commandType: CommandType.Text );
 
-            SearchReply reply = new(
+            SearchQueryReply queryReply = new(
                 await multi.ReadSingleAsync<int>(),
                 (await multi.ReadAsync<SearchDto>()).ToList() );
 
-            return reply;
+            return queryReply;
         }
         catch ( Exception e ) {
             _logger.LogError( e, $"An exception occured while executing product search: {e.Message}" );
@@ -75,19 +75,19 @@ internal sealed class ProductSearchRepository
         }
     }
 
-    static void BuildSqlQuery( SearchRequest search, out string sql, out DynamicParameters parameters )
+    static void BuildSqlQuery( SearchQueryRequest searchQuery, out string sql, out DynamicParameters parameters )
     {
         // START
         StringBuilder productBuilder = new();
         StringBuilder countBuilder = new();
         DynamicParameters p = new();
-        bool hasCategories = search.CategoryIds is not null && search.CategoryIds.Count > 0;
+        bool hasCategories = searchQuery.CategoryIds is not null && searchQuery.CategoryIds.Count > 0;
         
         // CATEGORIES
         if (hasCategories) {
             productBuilder.Append( CategorySql );
             countBuilder.Append( CategorySql );
-            p.Add( "categoryIds", GetDataTable( search.CategoryIds! ) );
+            p.Add( "categoryIds", GetDataTable( searchQuery.CategoryIds! ) );
         }
         
         // PRODUCTS & COUNT
@@ -101,13 +101,13 @@ internal sealed class ProductSearchRepository
         }
         
         // EARLY IF NO FILTERS
-        if (search.ProductSearchFilters is null) {
+        if (searchQuery.ProductSearchFilters is null) {
             Finish( out sql, out parameters );
             return;
         }
         
         // FILTERS
-        SearchFiltersDto filtersDto = search.ProductSearchFilters.Value;
+        SearchFiltersDto filtersDto = searchQuery.ProductSearchFilters.Value;
         productBuilder.Append( WhereStatementSql );
         
         if (filtersDto.BrandIds is not null) {
@@ -148,13 +148,13 @@ internal sealed class ProductSearchRepository
         void Finish( out string sql, out DynamicParameters parameters )
         {
             // language=sql
-            string OrderPaginationSql = $" ORDER BY {GetOrderType( search.Pagination.OrderBy )} OFFSET @offset ROWS FETCH NEXT @rows ONLY";
+            string OrderPaginationSql = $" ORDER BY {GetOrderType( searchQuery.Pagination.OrderBy )} OFFSET @offset ROWS FETCH NEXT @rows ONLY";
             productBuilder.Append( OrderPaginationSql );
-            sql = $"{countBuilder.ToString()}; {productBuilder.ToString()}";
+            sql = $"{countBuilder}; {productBuilder}";
 
-            p.Add( "orderBy", search.Pagination.OrderBy );
-            p.Add( "rows", search.Pagination.Rows );
-            p.Add( "offset", search.Pagination.Offset() );
+            p.Add( "orderBy", searchQuery.Pagination.OrderBy );
+            p.Add( "rows", searchQuery.Pagination.Rows );
+            p.Add( "offset", searchQuery.Pagination.Offset() );
             parameters = p;
         }
     }

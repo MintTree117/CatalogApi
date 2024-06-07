@@ -47,7 +47,7 @@ internal sealed class CategoryRepository // SINGLETON
     {
         const string sql = "SELECT * FROM Categories";
 
-        DapperContext dapper = GetContext();
+        IDapperContext dapper = IDapperContext.GetContext( _provider );
         Replies<Category> categories = await dapper.QueryAsync<Category>( sql );
 
         if (!categories.IsSuccess) {
@@ -66,20 +66,13 @@ internal sealed class CategoryRepository // SINGLETON
     }
     async void Update()
     {
-        lock ( _cacheLock )
-            _isUpdating = true;
-
+        _isUpdating = true;
+        
         bool success = await FetchCategories();
 
         if (!success) _logger.LogError( "Category Update Failed." );
         else _logger.LogInformation( "Category Update Success." );
-        
-        lock ( _cacheLock )
-            _isUpdating = false;
-    }
-    DapperContext GetContext()
-    {
-        using AsyncServiceScope scope = _provider.CreateAsyncScope();
-        return scope.ServiceProvider.GetService<DapperContext>() ?? throw new Exception( "Failed to get DapperContext" );
+
+        _isUpdating = false;
     }
 }

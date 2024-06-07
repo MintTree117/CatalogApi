@@ -1,8 +1,9 @@
 using CatalogApplication.Repositories;
-using CatalogApplication.Types;
+using CatalogApplication.Types._Common.Geography;
 using CatalogApplication.Types.Categories;
 using CatalogApplication.Types.Filters.Dtos;
 using CatalogApplication.Types.Products.Dtos;
+using CatalogApplication.Types.Products.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CatalogApplication;
@@ -15,8 +16,8 @@ internal static class Endpoints
             await GetCategories( repository ) );
         app.MapGet( "api/filters", async ( FilterRepository repository ) =>
             await GetFilters( repository ) );
-        app.MapGet( "api/search", async ( HttpContext http, ProductSearchRepository repository ) =>
-            await GetSearch( http, repository ) );
+        app.MapGet( "api/search", async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
+            await GetSearch( http, products, inventory ) );
         app.MapGet( "api/details", async ( [FromQuery] Guid productId, ProductDetailsRepository repository ) =>
             await GetDetails( productId, repository ) );
     }
@@ -35,7 +36,7 @@ internal static class Endpoints
             ? Results.Ok( result )
             : Results.NotFound();
     }
-    static async Task<IResult> GetSearch( HttpContext http, ProductSearchRepository repository )
+    static async Task<IResult> GetSearch( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
     {
         IQueryCollection query = http.Request.Query;
 
@@ -59,16 +60,24 @@ internal static class Endpoints
         // Parse CategoryIds
         List<Guid>? categoryIds = ParseGuidList( query["CategoryIds"] );
 
-        SearchRequest request = new(
+        // Parse Address
+        int? x = ParseInt( query["Address.X"] );
+        int? y = ParseInt( query["Address.Y"] );
+        AddressDto? deliveryAddress = x is null || y is null ? null : new AddressDto( x.Value, y.Value );
+
+        SearchQueryRequest queryRequest = new(
             categoryIds?.Count > 0 ? categoryIds : null,
             productSearchFilters,
             pagination
         );
         
-        SearchReply? result = await repository.GetSearch( request );
-        return result is not null
-            ? Results.Ok( result )
-            : Results.NotFound();
+        SearchQueryReply? searchReply = await products.GetSearch( queryRequest );
+        if (searchReply is null)
+            return Results.NotFound();
+
+        List<int> estimatesReply = await inventory.GetDeliveryEstimates( searchReply.Value.Results, deliveryAddress );
+        SearchReply reply = new( searchReply.Value.TotalMatches, searchReply.Value.Results, estimatesReply );
+        return Results.Ok( reply );
     }
     static async Task<IResult> GetDetails( Guid productId, ProductDetailsRepository repository )
     {

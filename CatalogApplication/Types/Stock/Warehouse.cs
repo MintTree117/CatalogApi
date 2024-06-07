@@ -1,6 +1,10 @@
+using CatalogApplication.Types._Common;
+using CatalogApplication.Types._Common.Geography;
+
 namespace CatalogApplication.Types.Stock;
 
 internal readonly record struct Warehouse(
     Guid Id,
-    Guid AddressId,
-    string Name );
+    AddressDto AddressDto,
+    string Name,
+    string QueryUrl );

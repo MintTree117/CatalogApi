@@ -57,8 +57,8 @@ internal sealed class FilterRepository
             """;
         
         try {
-            
-            DapperContext dapper = GetContext();
+
+            IDapperContext dapper = IDapperContext.GetContext( _provider );
             await using SqlConnection connection = await dapper.GetOpenConnection();
 
             if (connection.State != ConnectionState.Open) {
@@ -94,10 +94,5 @@ internal sealed class FilterRepository
         else _logger.LogInformation( "Filter Update Success." );
         
         _isUpdating = false;
-    }
-    DapperContext GetContext()
-    {
-        using AsyncServiceScope scope = _provider.CreateAsyncScope();
-        return scope.ServiceProvider.GetService<DapperContext>() ?? throw new Exception( "Failed to get DapperContext" );
     }
 }
