@@ -1,5 +1,4 @@
 using CatalogApplication.Database;
-using CatalogApplication.Seeding;
 using CatalogApplication.Types._Common.ReplyTypes;
 using CatalogApplication.Types.Categories;
 
@@ -7,7 +6,7 @@ namespace CatalogApplication.Repositories;
 
 internal sealed class CategoryRepository // SINGLETON
 {
-    readonly IServiceProvider _provider;
+    readonly IDapperContext _dapper;
     readonly ILogger<CategoryRepository> _logger;
     readonly TimeSpan _cacheLifeMinutes = TimeSpan.FromMinutes( 10 );
     readonly object _cacheLock = new();
@@ -17,9 +16,9 @@ internal sealed class CategoryRepository // SINGLETON
     DateTime _lastCacheUpdate = DateTime.Now;
     List<Category>? _cachedCategories = null;
 
-    public CategoryRepository( IServiceProvider provider, ILogger<CategoryRepository> logger )
+    public CategoryRepository( IDapperContext dapper, ILogger<CategoryRepository> logger )
     {
-        _provider = provider;
+        _dapper = dapper;
         _logger = logger;
         _timer = new Timer( _ => Update(), null, TimeSpan.Zero, _cacheLifeMinutes );
     }
@@ -47,9 +46,8 @@ internal sealed class CategoryRepository // SINGLETON
     async Task<bool> FetchCategories()
     {
         const string sql = "SELECT * FROM Categories";
-
-        IDapperContext dapper = IDapperContext.GetContext( _provider );
-        Replies<Category> categories = await dapper.QueryAsync<Category>( sql );
+        
+        Replies<Category> categories = await _dapper.QueryAsync<Category>( sql );
 
         if (!categories.IsSuccess) {
             _logger.LogError( $"Failed to update categories cache: {categories.Message()}" );

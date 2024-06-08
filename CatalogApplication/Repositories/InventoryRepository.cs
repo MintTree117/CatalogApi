@@ -9,6 +9,7 @@ namespace CatalogApplication.Repositories;
 internal sealed class InventoryRepository
 {
     readonly IServiceProvider _provider;
+    readonly IDapperContext _dapper;
     readonly ILogger<InventoryRepository> _logger;
     readonly TimeSpan _cacheLifetime = TimeSpan.FromMinutes( 30 );
     readonly object _cacheLock = new();
@@ -31,9 +32,10 @@ internal sealed class InventoryRepository
         int Quantity );
     
     // CONSTRUCTOR
-    public InventoryRepository( IServiceProvider provider, ILogger<InventoryRepository> logger )
+    public InventoryRepository( IServiceProvider provider, IDapperContext dapper, ILogger<InventoryRepository> logger )
     {
         _provider = provider;
+        _dapper = dapper;
         _logger = logger;
         _cacheTimer = new Timer( _ => OnCacheTimer(), null, TimeSpan.Zero, _cacheLifetime );
     }
@@ -172,8 +174,7 @@ internal sealed class InventoryRepository
     async Task<List<Warehouse>?> GetWarehouseData()
     {
         const string sql = "SELECT * FROM Warehouses";
-        IDapperContext context = IDapperContext.GetContext( _provider );
-        Replies<Warehouse> result = await context.QueryAsync<Warehouse>( sql );
+        Replies<Warehouse> result = await _dapper.QueryAsync<Warehouse>( sql );
         return result.IsSuccess
             ? result.Enumerable.ToList()
             : null;

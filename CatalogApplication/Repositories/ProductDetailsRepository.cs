@@ -8,7 +8,7 @@ namespace CatalogApplication.Repositories;
 
 internal sealed class ProductDetailsRepository
 {
-    readonly IServiceProvider _provider;
+    readonly IDapperContext _dapper;
     readonly ILogger<ProductDetailsRepository> _logger;
     readonly TimeSpan _cacheLifeMinutes = TimeSpan.FromMinutes( 5 );
     readonly object _cacheLock = new();
@@ -33,9 +33,9 @@ internal sealed class ProductDetailsRepository
             WHERE pd.Id = {productId};
         """;
     
-    public ProductDetailsRepository( IServiceProvider provider, ILogger<ProductDetailsRepository> logger )
+    public ProductDetailsRepository( IDapperContext dapper, ILogger<ProductDetailsRepository> logger )
     {
-        _provider = provider;
+        _dapper = dapper;
         _logger = logger;
         _timer = new Timer( _ => Cleanup(), null, TimeSpan.Zero, _cacheLifeMinutes );
     }
@@ -52,8 +52,7 @@ internal sealed class ProductDetailsRepository
     async Task<bool> FetchDetails( Guid productId )
     {
         try {
-            IDapperContext dapper = IDapperContext.GetContext( _provider );
-            await using SqlConnection connection = await dapper.GetOpenConnection();
+            await using SqlConnection connection = await _dapper.GetOpenConnection();
 
             if (connection.State != ConnectionState.Open) {
                 _logger.LogError( $"Invalid connection state: {connection.State}" );

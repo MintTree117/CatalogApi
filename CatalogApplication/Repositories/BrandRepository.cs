@@ -1,6 +1,5 @@
 using System.Data;
 using CatalogApplication.Database;
-using CatalogApplication.Seeding;
 using CatalogApplication.Types.Brands.Dtos;
 using CatalogApplication.Types.Brands.Models;
 using Dapper;
@@ -10,7 +9,7 @@ namespace CatalogApplication.Repositories;
 
 internal sealed class BrandRepository
 {
-    readonly IServiceProvider _provider;
+    readonly IDapperContext _dapper;
     readonly ILogger<BrandRepository> _logger;
     readonly TimeSpan _cacheLifeMinutes = TimeSpan.FromMinutes( 10 );
     
@@ -19,9 +18,9 @@ internal sealed class BrandRepository
     DateTime _lastCacheUpdate = DateTime.Now;
     BrandsReply? _filters = null;
     
-    public BrandRepository( IServiceProvider provider, ILogger<BrandRepository> logger )
+    public BrandRepository( IDapperContext dapper, ILogger<BrandRepository> logger )
     {
-        _provider = provider;
+        _dapper = dapper;
         _logger = logger;
         _timer = new Timer( _ => Update(), null, TimeSpan.Zero, _cacheLifeMinutes );
     }
@@ -55,9 +54,8 @@ internal sealed class BrandRepository
             """;
         
         try {
-
-            IDapperContext dapper = IDapperContext.GetContext( _provider );
-            await using SqlConnection connection = await dapper.GetOpenConnection();
+            
+            await using SqlConnection connection = await _dapper.GetOpenConnection();
 
             if (connection.State != ConnectionState.Open) {
                 _logger.LogError( $"Invalid connection state: {connection.State}" );

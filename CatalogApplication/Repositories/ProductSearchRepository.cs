@@ -8,9 +8,9 @@ using Microsoft.Data.SqlClient;
 
 namespace CatalogApplication.Repositories;
 
-internal sealed class ProductSearchRepository( IServiceProvider provider, ILogger<ProductSearchRepository> logger )
+internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<ProductSearchRepository> logger )
 {
-    readonly IServiceProvider _provider = provider;
+    readonly IDapperContext _dapper = dapper;
     readonly ILogger<ProductSearchRepository> _logger = logger;
 
     // language=sql
@@ -56,8 +56,7 @@ internal sealed class ProductSearchRepository( IServiceProvider provider, ILogge
     internal async Task<SearchQueryReply?> GetSearch( SearchQueryRequest queryRequest )
     {
         try {
-            IDapperContext dapper = IDapperContext.GetContext( _provider );
-            await using SqlConnection connection = await dapper.GetOpenConnection();
+            await using SqlConnection connection = await _dapper.GetOpenConnection();
 
             if (connection.State != ConnectionState.Open) {
                 _logger.LogError( $"Invalid connection state: {connection.State}" );
