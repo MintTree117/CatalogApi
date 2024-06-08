@@ -3,12 +3,11 @@ namespace CatalogApplication.Types.Products.Models;
 internal readonly record struct Product(
     Guid Id,
     Guid BrandId,
-    Guid PriceRangeId,
-    Guid RatingLevelId,
+    float Rating,
+    bool IsInStock,
     bool IsFeatured,
     bool IsOnSale,
     string Name,
     string Image,
-    float Rating,
     decimal Price,
     decimal? SalePrice );

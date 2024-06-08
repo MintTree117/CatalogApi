@@ -34,7 +34,6 @@ internal sealed class FilterRepository
             seeder.BrandsInMemory,
             seeder.BrandCategoriesInMemory,
             [],
-            [],
             [] );
     }
 
@@ -86,7 +85,6 @@ internal sealed class FilterRepository
             FiltersReply filters = new(
                 (await reader.ReadAsync<Brand>()).ToList(),
                 (await reader.ReadAsync<BrandCategory>()).ToList(),
-                (await reader.ReadAsync<PriceRange>()).ToList(),
                 (await reader.ReadAsync<RatingLevel>()).ToList(),
                 (await reader.ReadAsync<ShippingTimespan>()).ToList() );
 

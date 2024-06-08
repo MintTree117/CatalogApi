@@ -8,10 +8,10 @@ using Microsoft.Data.SqlClient;
 
 namespace CatalogApplication.Repositories;
 
-internal sealed class ProductSearchRepository
+internal sealed class ProductSearchRepository( IServiceProvider provider, ILogger<ProductSearchRepository> logger )
 {
-    readonly IServiceProvider _provider;
-    readonly ILogger<ProductSearchRepository> _logger;
+    readonly IServiceProvider _provider = provider;
+    readonly ILogger<ProductSearchRepository> _logger = logger;
 
     // language=sql
     const string CategorySql =
@@ -33,21 +33,18 @@ internal sealed class ProductSearchRepository
     // language=sql
     const string BrandsSql = " AND p.BrandId IN (SELECT Id FROM @brandIds)";
     // language=sql
-    const string PriceSql = " AND p.PriceRangeId IN (SELECT Id FROM @priceRangeIds)";
+    const string MinPriceSql = " AND (p.Price >= @minPrice OR p.SalePrice >= @minPrice)";
     // language=sql
-    const string RatingSql = " AND p.RatingLevelId IN (SELECT Id FROM @ratingLevelIds)";
+    const string MaxPriceSql = " AND (p.Price <= @maxPrice OR p.SalePrice <= @maxPrice)";
+    // language=sql
+    const string RatingSql = " AND p.Rating >= @minimumRating";
     // language=sql
     const string StockSql = " AND p.IsInStock = @isInStock";
     // language=sql
     const string FeaturedSql = " AND p.IsFeatured = @isFeatured";
     // language=sql
-    const string SaleSql = " AND p.IsOnSale = @isOnSale";
+    const string SaleSql = " AND p.SalePrice >= 0";
 
-    public ProductSearchRepository( IServiceProvider provider, ILogger<ProductSearchRepository> logger )
-    {
-        _provider = provider;
-        _logger = logger;
-    }
     internal async Task<SearchQueryReply?> GetSearch( SearchQueryRequest queryRequest )
     {
         try {
@@ -110,41 +107,53 @@ internal sealed class ProductSearchRepository
         SearchFiltersDto filtersDto = searchQuery.ProductSearchFilters.Value;
         productBuilder.Append( WhereStatementSql );
         
+        // BRANDS
         if (filtersDto.BrandIds is not null) {
             productBuilder.Append( BrandsSql );
             countBuilder.Append( BrandsSql );
             p.Add( "brandIds", GetDataTable( filtersDto.BrandIds ) );
         }
-        if (filtersDto.PriceRangeIds is not null) {
-            productBuilder.Append( PriceSql );
-            countBuilder.Append( PriceSql );
-            p.Add( "priceRangeIds", GetDataTable( filtersDto.PriceRangeIds ) );
+        // MIN PRICE
+        if (filtersDto.MinimumPrice is not null) {
+            productBuilder.Append( MinPriceSql );
+            countBuilder.Append( MinPriceSql );
+            p.Add( "minPrice", filtersDto.MinimumPrice );
         }
-        if (filtersDto.RatingLevelIds is not null) {
+        // MAX PRICE
+        if (filtersDto.MaximumPrice is not null) {
+            productBuilder.Append( MaxPriceSql );
+            countBuilder.Append( MaxPriceSql );
+            p.Add( "maxPrice", filtersDto.MaximumPrice );
+        }
+        // MIN RATING
+        if (filtersDto.MinimumRating is not null) {
             productBuilder.Append( RatingSql );
             countBuilder.Append( RatingSql );
-            p.Add( "ratingLevelIds", GetDataTable( filtersDto.RatingLevelIds ) );
+            p.Add( "minRating", filtersDto.MinimumRating );
         }
+        // IN STOCK
         if (filtersDto.IsInStock is not null) {
             productBuilder.Append( StockSql );
             countBuilder.Append( StockSql );
             p.Add( "isInStock", filtersDto.IsInStock );
         }
+        // IS FEATURED
         if (filtersDto.IsFeatured is not null) {
             productBuilder.Append( FeaturedSql );
             countBuilder.Append( FeaturedSql );
             p.Add( "isFeatured", filtersDto.IsFeatured );
         }
-        if (filtersDto.IsOnSale is not null) {
+        // IS ON SALE
+        if (filtersDto.IsOnSale) {
             productBuilder.Append( SaleSql );
             countBuilder.Append( SaleSql );
-            p.Add( "isOnSale", filtersDto.IsOnSale );
         }
         
         // PAGINATION
         Finish( out sql, out parameters );
         return;
-
+        
+        // UTIL METHOD
         void Finish( out string sql, out DynamicParameters parameters )
         {
             // language=sql

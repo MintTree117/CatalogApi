@@ -2,8 +2,9 @@ namespace CatalogApplication.Types.Products.Dtos;
 
 internal readonly record struct SearchFiltersDto(
     List<Guid>? BrandIds,
-    List<Guid>? PriceRangeIds,
-    List<Guid>? RatingLevelIds,
+    int? MinimumPrice,
+    int? MaximumPrice,
+    int? MinimumRating,
     bool? IsInStock,
     bool? IsFeatured,
-    bool? IsOnSale );
+    bool IsOnSale );

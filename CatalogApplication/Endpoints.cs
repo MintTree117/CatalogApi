@@ -50,11 +50,12 @@ internal static class Endpoints
         // Parse SearchFiltersDto
         SearchFiltersDto productSearchFilters = new(
             ParseGuidList( query["ProductSearchFilters.BrandIds"] ),
-            ParseGuidList( query["ProductSearchFilters.PriceRangeIds"] ),
-            ParseGuidList( query["ProductSearchFilters.RatingLevelIds"] ),
+            ParseInt( query["ProductSearchFilters.MinimumPrice"] ),
+            ParseInt( query["ProductSearchFilters.MaximumPrice"] ),
+            ParseInt( query["ProductSearchFilters.MinimumRating"] ),
             ParseBool( query["ProductSearchFilters.IsInStock"] ),
             ParseBool( query["ProductSearchFilters.IsFeatured"] ),
-            ParseBool( query["ProductSearchFilters.IsOnSale"] )
+            ParseBool( query["ProductSearchFilters.IsOnSale"] ) ?? false
         );
 
         // Parse CategoryIds
