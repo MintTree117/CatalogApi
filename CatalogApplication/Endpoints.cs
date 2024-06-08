@@ -1,7 +1,7 @@
 using CatalogApplication.Repositories;
 using CatalogApplication.Types._Common.Geography;
+using CatalogApplication.Types.Brands.Dtos;
 using CatalogApplication.Types.Categories;
-using CatalogApplication.Types.Filters.Dtos;
 using CatalogApplication.Types.Products.Dtos;
 using CatalogApplication.Types.Products.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +14,7 @@ internal static class Endpoints
     {
         app.MapGet( "api/categories", async ( CategoryRepository repository ) => 
             await GetCategories( repository ) );
-        app.MapGet( "api/filters", async ( FilterRepository repository ) =>
+        app.MapGet( "api/filters", async ( BrandRepository repository ) =>
             await GetFilters( repository ) );
         app.MapGet( "api/search", async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
             await GetSearch( http, products, inventory ) );
@@ -29,9 +29,9 @@ internal static class Endpoints
             ? Results.Ok( result )
             : Results.NotFound();
     }
-    static async Task<IResult> GetFilters( FilterRepository repository )
+    static async Task<IResult> GetFilters( BrandRepository repository )
     {
-        FiltersReply? result = await repository.GetFilters();
+        BrandsReply? result = await repository.GetFilters();
         return result is not null
             ? Results.Ok( result )
             : Results.NotFound();

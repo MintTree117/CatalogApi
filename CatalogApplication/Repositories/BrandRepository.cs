@@ -1,27 +1,28 @@
 using System.Data;
 using CatalogApplication.Database;
 using CatalogApplication.Seed;
-using CatalogApplication.Types.Filters.Dtos;
+using CatalogApplication.Types.Brands.Dtos;
+using CatalogApplication.Types.Brands.Models;
 using CatalogApplication.Types.Filters.Models;
 using Dapper;
 using Microsoft.Data.SqlClient;
 
 namespace CatalogApplication.Repositories;
 
-internal sealed class FilterRepository
+internal sealed class BrandRepository
 {
     readonly bool UsingInMemory = true; // for simplicity in demo-deployment
     
     readonly IServiceProvider _provider;
-    readonly ILogger<FilterRepository> _logger;
+    readonly ILogger<BrandRepository> _logger;
     readonly TimeSpan _cacheLifeMinutes = TimeSpan.FromMinutes( 10 );
     
     bool _isUpdating = false;
     Timer _timer;
     DateTime _lastCacheUpdate = DateTime.Now;
-    FiltersReply? _filters = null;
+    BrandsReply? _filters = null;
     
-    public FilterRepository( IServiceProvider provider, ILogger<FilterRepository> logger )
+    public BrandRepository( IServiceProvider provider, ILogger<BrandRepository> logger )
     {
         _provider = provider;
         _logger = logger;
@@ -30,14 +31,12 @@ internal sealed class FilterRepository
         if (!UsingInMemory)
             return;
         SeedingService seeder = _provider.GetService<SeedingService>() ?? throw new Exception( "Failed to get SeedingService from Provider." );
-        _filters = new FiltersReply(
+        _filters = new BrandsReply(
             seeder.BrandsInMemory,
-            seeder.BrandCategoriesInMemory,
-            [],
-            [] );
+            seeder.BrandCategoriesInMemory );
     }
 
-    internal async Task<FiltersReply?> GetFilters()
+    internal async Task<BrandsReply?> GetFilters()
     {
         if (_filters is not null && DateTime.Now - _lastCacheUpdate < _cacheLifeMinutes)
             return _filters;
@@ -66,9 +65,6 @@ internal sealed class FilterRepository
             """
             SELECT * FROM Brands;
             SELECT * FROM BrandCategories;
-            SELECT * FROM PriceRanges;
-            SELECT * FROM RatingLevels;
-            SELECT * FROM ShippingTimespans;
             """;
         
         try {
@@ -82,19 +78,17 @@ internal sealed class FilterRepository
             }
 
             await using SqlMapper.GridReader reader = await connection.QueryMultipleAsync( sql, commandType: CommandType.Text );
-            FiltersReply filters = new(
+            BrandsReply brands = new(
                 (await reader.ReadAsync<Brand>()).ToList(),
-                (await reader.ReadAsync<BrandCategory>()).ToList(),
-                (await reader.ReadAsync<RatingLevel>()).ToList(),
-                (await reader.ReadAsync<ShippingTimespan>()).ToList() );
+                (await reader.ReadAsync<BrandCategory>()).ToList() );
 
-            _filters = filters;
+            _filters = brands;
             _lastCacheUpdate = DateTime.Now;
-            _logger.LogInformation( "Filter Repository Updated." );
+            _logger.LogInformation( "Brand Repository Updated." );
             return true;
         }
         catch ( Exception e ) {
-            _logger.LogError( e, $"Error while attempting to fetch filters from repository: {e.Message}" );
+            _logger.LogError( e, $"Error while attempting to fetch brands from repository: {e.Message}" );
             return false;
         }
     }
@@ -104,8 +98,8 @@ internal sealed class FilterRepository
 
         bool success = await FetchFilters();
         
-        if (!success) _logger.LogError( "Filter Update Failed." );
-        else _logger.LogInformation( "Filter Update Success." );
+        if (!success) _logger.LogError( "Brands Update Failed." );
+        else _logger.LogInformation( "Brands Update Success." );
         
         _isUpdating = false;
     }

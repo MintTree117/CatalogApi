@@ -1,4 +1,4 @@
-namespace CatalogApplication.Types.Filters.Models;
+namespace CatalogApplication.Types.Products.Models;
 
 internal readonly record struct Tag(
     Guid Id,

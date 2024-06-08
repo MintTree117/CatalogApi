@@ -1,4 +1,5 @@
 using CatalogApplication.Database;
+using CatalogApplication.Types.Brands.Models;
 using CatalogApplication.Types.Categories;
 using CatalogApplication.Types.Filters.Models;
 using CatalogApplication.Types.Products.Models;
