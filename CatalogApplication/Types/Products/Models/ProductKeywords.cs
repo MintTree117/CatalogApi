@@ -1,5 +1,5 @@
 namespace CatalogApplication.Types.Products.Models;
 
-internal readonly record struct ProductTag(
+internal readonly record struct ProductKeywords(
     Guid ProductId,
-    Guid TagId );
+    string Keywords );

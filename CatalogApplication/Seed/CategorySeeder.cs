@@ -59,9 +59,9 @@ internal static class CategorySeeder
         List<Category> categories = [];
 
         int pcIndex = 0;
-        foreach ( string s in PrimaryCategories ) {
+        foreach ( string s in SeedData.PrimaryCategories.Keys ) {
             Category pc = new( Guid.NewGuid(), null, s );
-            foreach ( string s2 in SubCategories[pcIndex] ) {
+            foreach ( string s2 in SeedData.SubCategories[pcIndex].Keys ) {
                 Category sc = new( Guid.NewGuid(), pc.Id, s2 );
                 categories.Add( sc );
             }
@@ -88,108 +88,4 @@ internal static class CategorySeeder
 
         return table;
     }
-    
-    // Primary categories
-    static string[] PrimaryCategories = [
-        "Computers & Laptops",
-        "Smartphones & Tablets",
-        "TVs & Home Entertainment",
-        "Cameras & Photography",
-        "Audio & Headphones",
-        "Wearable Technology",
-        "Gaming",
-        "Accessories",
-        "Home Appliances",
-        "Office Electronics"
-    ];
-
-    // Sub-categories for each primary category
-    static string[][] SubCategories = [
-        // Computers & Laptops
-        [
-            "Laptops",
-            "Desktops",
-            "Tablets",
-            "Monitors",
-            "Computer Accessories"
-        ],
-
-        // Smartphones & Tablets
-        [
-            "Smartphones",
-            "Tablets",
-            "Smartwatch",
-            "Mobile Accessories"
-        ],
-
-        // TVs & Home Entertainment
-        [
-            "Televisions",
-            "Home Theater Systems",
-            "Media Players",
-            "Projectors",
-            "TV Accessories"
-        ],
-
-        // Cameras & Photography
-        [
-            "Digital Cameras",
-            "DSLR Cameras",
-            "Action Cameras",
-            "Lenses & Accessories",
-            "Camera Drones"
-        ],
-
-        // Audio & Headphones
-        [
-            "Headphones",
-            "Speakers",
-            "Home Audio Systems",
-            "MP3 Players",
-            "Audio Accessories"
-        ],
-
-        // Wearable Technology
-        [
-            "Smartwatches",
-            "Fitness Trackers",
-            "VR Headsets",
-            "Wearable Accessories"
-        ],
-
-        // Gaming
-        [
-            "Gaming Consoles",
-            "Video Games",
-            "Gaming Accessories",
-            "Gaming Laptops & PCs"
-        ],
-
-        // Accessories
-        [
-            "Cables & Adapters",
-            "Cases & Covers",
-            "Chargers & Power Banks",
-            "Batteries",
-            "Storage Devices"
-        ],
-
-        // Home Appliances
-        [
-            "Refrigerators",
-            "Washing Machines",
-            "Microwaves",
-            "Vacuum Cleaners",
-            "Kitchen Appliances"
-        ],
-
-        // Office Electronics
-        [
-            "Printers & Scanners",
-            "Projectors",
-            "Office Accessories",
-            "Calculators",
-            "Shredders"
-        ]
-    ];
 }
