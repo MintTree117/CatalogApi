@@ -1,20 +1,21 @@
-namespace CatalogApplication.Seed;
+namespace CatalogApplication.Seed.SeedData;
 
-internal static class SeedData
+internal static class CategorySeedData
 {
-    internal static readonly Dictionary<string, string> PrimaryCategories = new() {
-        { "Computers & Laptops", "Computer" },
-        { "Smartphones & Tablets", "Smartphone" },
-        { "TVs & Home Entertainment", "Television" },
-        { "Cameras & Photography", "Camera" },
-        { "Audio & Headphones", "Headphone" },
-        { "Wearable Technology", "Wearable" },
-        { "Cables & Adapters", "Cable" },
-        { "Storage Devices", "Storage Device" },
-        { "Home Appliances", "Appliance" },
-        { "Office Electronics", "Office Electronic" }
-    };
-    internal static readonly Dictionary<string, string>[] SubCategories = [
+    internal static readonly string[] PrimaryCategories = [
+        "Computers & Laptops",
+        "Smartphones & Tablets",
+        "TVs & Home Entertainment",
+        "Cameras & Photography",
+        "Audio & Headphones",
+        "Wearable Technology",
+        "Cables & Adapters",
+        "Storage Devices",
+        "Home Appliances",
+        "Office Electronics"
+    ];
+
+    internal static readonly Dictionary<string, string>[] SecondaryCategories = [
         // Computers & Laptops
         new Dictionary<string, string> {
             { "Laptops", "Laptop" },
@@ -101,8 +102,4 @@ internal static class SeedData
             { "Shredders", "Shredder" }
         }
     ];
-
-    internal static Dictionary<string, List<string>> ProductImagesByPrimaryCategory = [];
-
-    internal const double MaxPrice = 10000;
 }

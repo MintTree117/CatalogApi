@@ -1,4 +1,5 @@
 using CatalogApplication.Database;
+using CatalogApplication.Seed.SeedData;
 using CatalogApplication.Types.Brands.Models;
 using CatalogApplication.Types.Categories;
 using CatalogApplication.Types.Filters.Models;
@@ -11,6 +12,7 @@ internal static class ProductSeeder
 {
     const int LoopSafety = 1000;
     const int ProductsPerPrimaryCategory = 100;
+    const int MaxKeywords = 25;
     
     internal static async Task<Reply<bool>> SeedProducts( IDapperContext dapper, List<Category> categories, List<Brand> brands, List<BrandCategory> brandCategories, RandomUtility random )
     {
@@ -21,10 +23,12 @@ internal static class ProductSeeder
         List<Product> products = [];
         List<ProductCategory> productCategories = [];
         List<ProductDescription> productDescriptions = [];
+        List<ProductKeywords> productKeywords = [];
 
         foreach ( Category primaryCategory in primaryCategories ) {
             for ( int i = 0; i < ProductsPerPrimaryCategory; i++ ) {
-                List<Category> selectedCategories = PickRandomCategories( primaryCategory, secondaryCategoriesByPrimaryId, random );
+                List<Category> sc = 
+                    PickRandomCategories( primaryCategory, secondaryCategoriesByPrimaryId, random );
                 Product p = new(
                     Guid.NewGuid(),
                     primaryCategory.Id,
@@ -36,10 +40,17 @@ internal static class ProductSeeder
                     PickImage( primaryCategories, random ),
                     PickPrice( random, out decimal price ),
                     PickSalePrice( price, random ) );
-                List<ProductCategory> pc = GenerateProductCategories( p, selectedCategories );
+                List<ProductCategory> pc = 
+                    GenerateProductCategories( p, sc );
+                ProductDescription pd =
+                    GenerateProductDescription( p, random );
+                ProductKeywords pk =
+                    GenerateProductKeywords( p, random );
                 
                 products.Add( p );
                 productCategories.AddRange( pc );
+                productDescriptions.Add( pd );
+                productKeywords.Add( pk );
             }
         }
         
@@ -72,6 +83,28 @@ internal static class ProductSeeder
             pc.Add( new ProductCategory( p.Id, c.Id ) );
         return pc;
     }
+    static ProductDescription GenerateProductDescription( Product p, RandomUtility random )
+    {
+        int index = random.GetRandomInt( ProductSeedData.ProductDescriptions.Length - 1 );
+        string text = ProductSeedData.ProductDescriptions[index];
+        return new ProductDescription( p.Id, text );
+    }
+    static ProductKeywords GenerateProductKeywords( Product p, RandomUtility random )
+    {
+        int numberOfKeywords = random.GetRandomInt( MaxKeywords );
+        HashSet<int> used = [];
+        List<string> keywords = [];
+        for ( int i = 0; i < numberOfKeywords; i++ ) {
+            for ( int j = 0; j < LoopSafety; j++ ) {
+                int index = random.GetRandomInt( ProductSeedData.ProductKeywords.Length - 1 );
+                if (!used.Add( index ))
+                    continue;
+                keywords.Add( ProductSeedData.ProductKeywords[index] );
+            }
+        }
+        return new ProductKeywords( p.Id, string.Join( " ", keywords ) );
+    }
+    
     static Guid PickBrandId( List<Brand> brands, RandomUtility random )
     {
         int index = random.GetRandomInt( brands.Count - 1 );
@@ -94,20 +127,20 @@ internal static class ProductSeeder
     }
     static string PickName( Category primaryCategory, int iteration )
     {
-        string pName = SeedData.PrimaryCategories[primaryCategory.Name];
+        string pName = ProductSeedData.ProductNamesByPrimaryCategory[primaryCategory.Name];
         string name = $"{pName} {iteration}";
         return name;
     }
     static string PickImage( List<Category> primaryCategories, RandomUtility random )
     {
         int cIndex = random.GetRandomInt( primaryCategories.Count - 1 );
-        List<string> images = SeedData.ProductImagesByPrimaryCategory[primaryCategories[cIndex].Name];
+        List<string> images = ProductSeedData.ProductImagesByPrimaryCategory[primaryCategories[cIndex].Name];
         int iIndex = random.GetRandomInt( images.Count - 1 );
         return images[iIndex];
     }
     static decimal PickPrice( RandomUtility random, out decimal price )
     {
-        price = (decimal) random.GetRandomDouble( SeedData.MaxPrice );
+        price = (decimal) random.GetRandomDouble( ProductSeedData.MaxPrice );
         return price;
     }
     static decimal PickSalePrice( decimal mainPrice, RandomUtility random )

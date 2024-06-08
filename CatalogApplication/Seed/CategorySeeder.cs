@@ -1,5 +1,6 @@
 using System.Data;
 using CatalogApplication.Database;
+using CatalogApplication.Seed.SeedData;
 using CatalogApplication.Types.Categories;
 using CatalogApplication.Types.ReplyTypes;
 using Dapper;
@@ -59,9 +60,9 @@ internal static class CategorySeeder
         List<Category> categories = [];
 
         int pcIndex = 0;
-        foreach ( string s in SeedData.PrimaryCategories.Keys ) {
+        foreach ( string s in CategorySeedData.PrimaryCategories ) {
             Category pc = new( Guid.NewGuid(), null, s );
-            foreach ( string s2 in SeedData.SubCategories[pcIndex].Keys ) {
+            foreach ( string s2 in CategorySeedData.SecondaryCategories[pcIndex].Keys ) {
                 Category sc = new( Guid.NewGuid(), pc.Id, s2 );
                 categories.Add( sc );
             }
