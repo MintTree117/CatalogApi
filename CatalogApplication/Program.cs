@@ -1,3 +1,5 @@
+using CatalogApplication.Seeding;
+
 WebApplicationBuilder builder = WebApplication.CreateBuilder( args );
 
 builder.Services.AddEndpointsApiExplorer();
@@ -11,4 +13,8 @@ if (app.Environment.IsDevelopment()) {
 }
 
 app.UseHttpsRedirection();
+
+var seeder = app.Services.GetRequiredService<SeedingService>();
+await seeder.SeedDatabase();
+
 app.Run();

@@ -24,8 +24,14 @@ internal sealed class SeedingService
         _dapper = dapper;
         _logger = logger;
     }
-    async Task SeedDatabase()
+    internal async Task SeedDatabase()
     {
+        // CLEAR CATALOG
+        Reply<int> clearReply = await _dapper.ExecuteStoredProcedure( "ClearCatalog" );
+        if (!clearReply.IsSuccess)
+            throw new Exception( $"Failed to clear database during seeding: {clearReply.Message()}" );
+        _logger.LogInformation( "Cleared Catalog." );
+        
         // CATEGORIES
         Replies<Category> categoriesReply = await SeedCategories();
         if (!categoriesReply.IsSuccess)
@@ -107,7 +113,6 @@ internal sealed class SeedingService
             ? (Replies<Brand>.With( brands ), Replies<BrandCategory>.With( brandCategories ))
             : (Replies<Brand>.With( brands ), Replies<BrandCategory>.None( brandCategoriesReply.Message() ));
     }
-
     async Task<Reply<ProductSeedingModel>> SeedProducts( List<Category> primaryCategories, Dictionary<Guid,List<Category>> secondaryCategories, List<Brand> brands, List<BrandCategory> brandCategories )
     {
         ProductSeedingModel seed = await Task.Run( () => 

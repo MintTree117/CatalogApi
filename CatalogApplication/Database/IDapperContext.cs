@@ -15,4 +15,5 @@ internal interface IDapperContext
     internal Task<Replies<T>> QueryAsync<T>( string sql, DynamicParameters? parameters = null );
     internal Task<Reply<T>> QueryFirstOrDefaultAsync<T>( string sql, DynamicParameters? parameters = null );
     internal Task<Reply<int>> ExecuteAsync( string sql, DynamicParameters? parameters = null );
+    internal Task<Reply<int>> ExecuteStoredProcedure( string procedureName, DynamicParameters? parameters = null );
 }

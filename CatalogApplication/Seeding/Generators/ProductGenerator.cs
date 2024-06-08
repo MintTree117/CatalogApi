@@ -33,7 +33,7 @@ internal static class ProductGenerator
                     PickIsInStock( random ),
                     PickIsFeatured( random ),
                     PickName( primaryCategory, i ),
-                    PickImage( primaryCategories, random ),
+                    PickImage( primaryCategory, random ),
                     PickPrice( random, out decimal price ),
                     PickSalePrice( price, random ) );
                 List<ProductCategory> pc = 
@@ -133,18 +133,18 @@ internal static class ProductGenerator
         return table;
     }
     
-    static List<ProductCategory> GenerateProductCategories( Product p, List<Category> selectedCategories )
+    static List<ProductCategory> GenerateProductCategories( Product product, List<Category> selectedCategories )
     {
         List<ProductCategory> pc = [];
         foreach ( Category c in selectedCategories )
-            pc.Add( new ProductCategory( p.Id, c.Id ) );
+            pc.Add( new ProductCategory( product.Id, c.Id ) );
         return pc;
     }
-    static ProductDescription GenerateProductDescription( Product p, RandomUtility random )
+    static ProductDescription GenerateProductDescription( Product product, RandomUtility random )
     {
         int index = random.GetRandomInt( ProductSeedData.ProductDescriptions.Length - 1 );
         string text = ProductSeedData.ProductDescriptions[index];
-        return new ProductDescription( p.Id, text );
+        return new ProductDescription( product.Id, text );
     }
     static ProductXml GenerateProductXml( Product product, List<Category> primaryCategories, RandomUtility random )
     {
@@ -268,12 +268,11 @@ internal static class ProductGenerator
         string name = $"{pName} {iteration}";
         return name;
     }
-    static string PickImage( List<Category> primaryCategories, RandomUtility random )
+    static string PickImage( Category primaryCategory, RandomUtility random )
     {
-        int cIndex = random.GetRandomInt( primaryCategories.Count - 1 );
-        List<string> images = ProductSeedData.ProductImagesByPrimaryCategory[primaryCategories[cIndex].Name];
-        int iIndex = random.GetRandomInt( images.Count - 1 );
-        return images[iIndex];
+        int i = random.GetRandomInt( ProductSeedData.ImagesPerCategory - 1 );
+        string image = $"{primaryCategory.Name}/{i}.png";
+        return image;
     }
     static decimal PickPrice( RandomUtility random, out decimal price )
     {

@@ -4,6 +4,7 @@ internal static class ProductSeedData
 {
     internal const double MaxPrice = 10000;
     internal const double MaxRating = 5;
+    internal const int ImagesPerCategory = 5;
     internal static readonly Dictionary<string, string> ProductNamesByPrimaryCategory = new() {
         { CategorySeedData.PrimaryCategories[0], "Computer" },
         { CategorySeedData.PrimaryCategories[1], "Smartphone" },
@@ -16,7 +17,6 @@ internal static class ProductSeedData
         { CategorySeedData.PrimaryCategories[8], "Appliance" },
         { CategorySeedData.PrimaryCategories[9], "Office Electronic" }
     };
-    internal static Dictionary<string, List<string>> ProductImagesByPrimaryCategory = [];
     internal static readonly string[] ProductDescriptions = [
         "This product is crafted with the utmost care to ensure the highest quality. It is designed to meet the needs of customers who value durability and performance. Whether you are using it daily or occasionally, this product will provide reliable service. Its elegant design complements any setting, making it both functional and stylish. The materials used are of premium quality, ensuring long-lasting use. Easy to maintain and user-friendly, it is a perfect addition to your collection. Experience the perfect blend of innovation and tradition with this exceptional product.",
         "Introducing a product that combines modern technology with user-centric design. It offers a seamless experience, making it an essential tool for anyone. The product is engineered to perform under various conditions, ensuring that it meets all your needs. It is lightweight, portable, and easy to handle, making it ideal for both home and travel. With its intuitive interface, you will find it easy to use right from the start. Invest in a product that offers both practicality and efficiency, ensuring you get the best value for your money.",
