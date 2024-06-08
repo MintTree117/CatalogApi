@@ -3,7 +3,6 @@ using CatalogApplication.Database;
 using CatalogApplication.Seeding;
 using CatalogApplication.Types.Brands.Dtos;
 using CatalogApplication.Types.Brands.Models;
-using CatalogApplication.Types.Filters.Models;
 using Dapper;
 using Microsoft.Data.SqlClient;
 

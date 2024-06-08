@@ -1,7 +1,7 @@
 using CatalogApplication.Database;
 using CatalogApplication.Seeding;
+using CatalogApplication.Types._Common.ReplyTypes;
 using CatalogApplication.Types.Categories;
-using CatalogApplication.Types.ReplyTypes;
 
 namespace CatalogApplication.Repositories;
 

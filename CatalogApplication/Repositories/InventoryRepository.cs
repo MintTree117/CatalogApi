@@ -1,7 +1,7 @@
 using CatalogApplication.Database;
 using CatalogApplication.Types._Common.Geography;
+using CatalogApplication.Types._Common.ReplyTypes;
 using CatalogApplication.Types.Products.Dtos;
-using CatalogApplication.Types.ReplyTypes;
 using CatalogApplication.Types.Stock;
 
 namespace CatalogApplication.Repositories;
@@ -132,8 +132,8 @@ internal sealed class InventoryRepository
         
         // CHECK EACH WAREHOUSE...
         foreach ( Warehouse w in warehouses ) {
-            Cell warehouseCell = GetCell( w.AddressDto );
-            int cell = CalculateCell( w.AddressDto.PosX, w.AddressDto.PosY );
+            Cell warehouseCell = new( w.PosX, w.PosY );
+            int cell = CalculateCell( w.PosX, w.PosY );
             
             if (!newCache.TryGetValue( cell, out var locations )) {
                 locations = new Dictionary<Cell, Dictionary<Guid, int>>();

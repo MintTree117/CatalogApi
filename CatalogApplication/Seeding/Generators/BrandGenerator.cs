@@ -2,14 +2,11 @@ using System.Data;
 using CatalogApplication.Seeding.SeedData;
 using CatalogApplication.Types.Brands.Models;
 using CatalogApplication.Types.Categories;
-using CatalogApplication.Types.Filters.Models;
 
 namespace CatalogApplication.Seeding.Generators;
 
 internal static class BrandGenerator
 {
-    const int MaxCategoriesPerBrand = 6;
-    
     internal static List<Brand> GenerateBrands()
     {
         HashSet<string> brandNames = [];

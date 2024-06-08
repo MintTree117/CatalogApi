@@ -1,11 +1,11 @@
 using System.Data;
 using CatalogApplication.Database;
 using CatalogApplication.Seeding.Generators;
+using CatalogApplication.Types._Common.ReplyTypes;
 using CatalogApplication.Types.Brands.Models;
 using CatalogApplication.Types.Categories;
-using CatalogApplication.Types.Filters.Models;
 using CatalogApplication.Types.Products.Models;
-using CatalogApplication.Types.ReplyTypes;
+using CatalogApplication.Types.Stock;
 using Dapper;
 
 namespace CatalogApplication.Seeding;
@@ -35,7 +35,7 @@ internal sealed class SeedingService
         // CATEGORIES
         Replies<Category> categoriesReply = await SeedCategories();
         if (!categoriesReply.IsSuccess)
-            throw new Exception( $"Failed to generate Categories during seeding: {categoriesReply.Message()}" );
+            throw new Exception( $"Failed to seed Categories during seeding: {categoriesReply.Message()}" );
         (List<Category>, Dictionary<Guid, List<Category>>) sortedCategories = 
             SortCategories( categoriesReply.Enumerable.ToList() );
         _logger.LogInformation( "Seeded Categories." );
@@ -43,17 +43,23 @@ internal sealed class SeedingService
         // BRANDS
         (Replies<Brand>, Replies<BrandCategory>) brandsReply = await SeedBrands( sortedCategories.Item1 );
         if (!brandsReply.Item1.IsSuccess)
-            throw new Exception( $"Failed to generate Brands during seeding: {brandsReply.Item1.Message()}" );
+            throw new Exception( $"Failed to seed Brands during seeding: {brandsReply.Item1.Message()}" );
         if (!brandsReply.Item2.IsSuccess)
-            throw new Exception( $"Failed to generate BrandCategories during seeding: {brandsReply.Item2.Message()}" );
+            throw new Exception( $"Failed to seed BrandCategories during seeding: {brandsReply.Item2.Message()}" );
         _logger.LogInformation( "Seeded Brands." );
         
         // PRODUCTS
         Reply<ProductSeedingModel> productsReply = 
             await SeedProducts( sortedCategories.Item1, sortedCategories.Item2, brandsReply.Item1.Enumerable.ToList(), brandsReply.Item2.Enumerable.ToList() );
         if (!productsReply.IsSuccess)
-            throw new Exception( $"Failed to generate Products during seeding: {productsReply.Message()}" );
+            throw new Exception( $"Failed to seed Products during seeding: {productsReply.Message()}" );
         _logger.LogInformation( "Seeded Products." );
+        
+        // WAREHOUSES
+        Replies<Warehouse> warehousesReply = await SeedWarehouses();
+        if (!warehousesReply.IsSuccess)
+            throw new Exception( $"Failed to seed Warehouses during seeding: {warehousesReply.Message()}" );
+        _logger.LogInformation( "Seeded Warehouses." );
     }
 
     async Task<Replies<Category>> SeedCategories()
@@ -135,6 +141,26 @@ internal sealed class SeedingService
             return Reply<ProductSeedingModel>.None( productXmlsReply );
         
         return Reply<ProductSeedingModel>.With( seed );
+    }
+    async Task<Replies<Warehouse>> SeedWarehouses()
+    {
+        const string tvpName = "WarehousesTvp";
+        const string Sql =
+            """
+            INSERT INTO Warehouses (Id, QueryUrl, PosX, PosY)
+            SELECT (Id, QueryUrl, PosX, PosY)
+            FROM @WarehousesTvp
+            """;
+
+        List<Warehouse> warehouses = WarehouseGenerator.GenerateWarehouses();
+        DataTable tableParam = WarehouseGenerator.GenerateWarehousesTable( warehouses );
+        DynamicParameters parameters = new();
+        parameters.Add( tvpName, tableParam.AsTableValuedParameter( tvpName ) );
+
+        Reply<int> reply = await _dapper.ExecuteAsync( Sql, parameters );
+        return reply.IsSuccess
+            ? Replies<Warehouse>.With( warehouses )
+            : Replies<Warehouse>.None( reply );
     }
     
     static async Task<Reply<int>> InsertProducts( IDapperContext dapper, List<Product> products )

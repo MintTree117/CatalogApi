@@ -1,5 +1,5 @@
 using System.Data;
-using CatalogApplication.Types.ReplyTypes;
+using CatalogApplication.Types._Common.ReplyTypes;
 using Dapper;
 using Microsoft.Data.SqlClient;
 

@@ -1,4 +1,4 @@
-namespace CatalogApplication.Types.ReplyTypes;
+namespace CatalogApplication.Types._Common.ReplyTypes;
 
 public readonly record struct Reply<T> : IReply
 {

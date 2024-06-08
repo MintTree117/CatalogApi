@@ -3,7 +3,6 @@ using System.Xml;
 using CatalogApplication.Seeding.SeedData;
 using CatalogApplication.Types.Brands.Models;
 using CatalogApplication.Types.Categories;
-using CatalogApplication.Types.Filters.Models;
 using CatalogApplication.Types.Products.Models;
 
 namespace CatalogApplication.Seeding.Generators;
