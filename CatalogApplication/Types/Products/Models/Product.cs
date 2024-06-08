@@ -6,8 +6,7 @@ internal readonly record struct Product(
     float Rating,
     bool IsInStock,
     bool IsFeatured,
-    bool IsOnSale,
     string Name,
     string Image,
     decimal Price,
-    decimal? SalePrice );
+    decimal SalePrice );
