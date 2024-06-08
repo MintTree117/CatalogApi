@@ -10,7 +10,7 @@ namespace CatalogApplication.Seeding.Generators;
 internal static class ProductGenerator
 {
     const int LoopSafety = 1000;
-    const int ProductsPerPrimaryCategory = 10;
+    const int ProductsPerPrimaryCategory = 3;
 
     internal static ProductSeedingModel GenerateProducts( List<Category> primaryCategories, Dictionary<Guid, List<Category>> secondaryCategories, List<Brand> brands, List<BrandCategory> brandCategories, RandomUtility random )
     {
@@ -24,8 +24,8 @@ internal static class ProductGenerator
                 
                 List<Category> sc = 
                     PickRandomCategories( primaryCategory, secondaryCategories, random );
-                Product p = new(
-                    Guid.NewGuid(),
+                Product p = new( 
+                    Consts.NewGuidSafe(),
                     primaryCategory.Id,
                     PickBrandId( sc, brands, brandCategories, random ),
                     PickRating( random ),
@@ -48,7 +48,7 @@ internal static class ProductGenerator
                 productXmls.Add( px );
             }
         }
-
+        
         return new ProductSeedingModel( 
             products, 
             productCategories, 

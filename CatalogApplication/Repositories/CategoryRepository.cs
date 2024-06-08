@@ -45,7 +45,7 @@ internal sealed class CategoryRepository // SINGLETON
     }
     async Task<bool> FetchCategories()
     {
-        const string sql = "SELECT * FROM Categories";
+        const string sql = "SELECT * FROM CatalogApi.Categories";
         
         Replies<Category> categories = await _dapper.QueryAsync<Category>( sql );
 

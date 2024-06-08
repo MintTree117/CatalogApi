@@ -267,7 +267,7 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
             if (!result.IsSuccess)
                 return Reply<bool>.None( result );
 
-            index += DatabaseInsertPageSizeBigData;
+            index += DatabaseInsertPageSize;
         }
 
         return Reply<bool>.With( true );

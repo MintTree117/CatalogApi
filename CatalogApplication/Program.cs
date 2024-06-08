@@ -1,3 +1,4 @@
+using CatalogApplication;
 using CatalogApplication.Database;
 using CatalogApplication.Repositories;
 using CatalogApplication.Seeding;
@@ -22,6 +23,7 @@ if (app.Environment.IsDevelopment()) {
     app.UseSwaggerUI();
 }
 
+app.MapEndpoints();
 app.UseHttpsRedirection();
 
 var seeder = app.Services.GetRequiredService<SeedingService>();
