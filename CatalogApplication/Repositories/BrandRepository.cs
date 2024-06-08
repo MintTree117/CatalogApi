@@ -25,7 +25,7 @@ internal sealed class BrandRepository
         _timer = new Timer( _ => Update(), null, TimeSpan.Zero, _cacheLifeMinutes );
     }
 
-    internal async Task<BrandsReply?> GetFilters()
+    internal async Task<BrandsReply?> GetBrands()
     {
         if (_filters is not null && DateTime.Now - _lastCacheUpdate < _cacheLifeMinutes)
             return _filters;
@@ -43,14 +43,14 @@ internal sealed class BrandRepository
             count++;
         }
 
-        return await FetchFilters();
+        return await FetchBrands();
     }
-    async Task<bool> FetchFilters()
+    async Task<bool> FetchBrands()
     {
         const string sql =
             """
-            SELECT * FROM Brands;
-            SELECT * FROM BrandCategories;
+            SELECT * FROM CatalogApi.Brands;
+            SELECT * FROM CatalogApi.BrandCategories;
             """;
         
         try {
@@ -81,7 +81,7 @@ internal sealed class BrandRepository
     {
         _isUpdating = true;
 
-        bool success = await FetchFilters();
+        bool success = await FetchBrands();
         
         if (!success) _logger.LogError( "Brands Update Failed." );
         else _logger.LogInformation( "Brands Update Success." );

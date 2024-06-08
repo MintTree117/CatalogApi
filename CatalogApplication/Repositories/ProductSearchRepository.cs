@@ -18,7 +18,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         """
         WITH ProductCategoryFilter AS (
             SELECT DISTINCT ProductId
-            FROM ProductCategories
+            FROM CatalogApi.ProductCategories
             WHERE CategoryId IN (SELECT Id FROM @categoryIds)
         ),
         """;
@@ -29,13 +29,13 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         OR pt.Name LIKE '%' + @searchText + '%';
         """;
     // language=sql
-    const string CategoryJoinSql = " INNER JOIN ProductCategoryFilter pc ON p.Id = pc.ProductId";
+    const string CategoryJoinSql = " INNER JOIN CatalogApi.ProductCategories pc ON p.Id = pc.ProductId";
     // language=sql
-    const string SearchTextJoinSql = " INNER JOIN ProductTags pt ON p.Id = pt.ProductId";
+    const string SearchTextJoinSql = " INNER JOIN CatalogApi.ProductXmls pt ON p.Id = pt.ProductId";
     // language=sql
-    const string ProductSql = "SELECT DISTINCT p.Id, p.BrandId, p.Name, p.Image, p.Rating, p.Price, p.SalePrice FROM Products p";
+    const string ProductSql = "SELECT DISTINCT p.Id, p.BrandId, p.Name, p.Image, p.Rating, p.Price, p.SalePrice FROM CatalogApi.Products p";
     // language=sql
-    const string CountSql = "SELECT COUNT(*) FROM Products p";
+    const string CountSql = "SELECT COUNT(*) FROM CatalogApi.Products p";
     // language=sql
     const string WhereStatementSql = " WHERE 1=1";
     // language=sql

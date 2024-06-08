@@ -14,8 +14,8 @@ internal static class Endpoints
     {
         app.MapGet( "api/categories", async ( CategoryRepository repository ) => 
             await GetCategories( repository ) );
-        app.MapGet( "api/filters", async ( BrandRepository repository ) =>
-            await GetFilters( repository ) );
+        app.MapGet( "api/brands", async ( BrandRepository repository ) =>
+            await GetBrands( repository ) );
         app.MapGet( "api/search", async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
             await GetSearch( http, products, inventory ) );
         app.MapGet( "api/details", async ( [FromQuery] Guid productId, ProductDetailsRepository repository ) =>
@@ -29,9 +29,9 @@ internal static class Endpoints
             ? Results.Ok( result )
             : Results.NotFound();
     }
-    static async Task<IResult> GetFilters( BrandRepository repository )
+    static async Task<IResult> GetBrands( BrandRepository repository )
     {
-        BrandsReply? result = await repository.GetFilters();
+        BrandsReply? result = await repository.GetBrands();
         return result is not null
             ? Results.Ok( result )
             : Results.NotFound();

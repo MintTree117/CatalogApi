@@ -21,15 +21,15 @@ internal sealed class ProductDetailsRepository
     // language=sql
     const string sql =
         """
-        SELECT Id FROM Categories
+        SELECT Id FROM CatalogApi.Categories
                   WHERE ProductId = {productId};
         SELECT
-            p.Id, p.BrandId, p.PriceRangeId, p.RatingLevelId, p.ShippingTimespan, p.Name, p.Image, p.Rating, p.Price, p.SalePrice,
+            p.Id, p.BrandId, p.PriceRangeId, p.RatingLevelId, p.ShippingTimespan, p.Name, p.Image, p.Price, p.SalePrice,
             pd.Description,
             px.Xml
-        FROM Products p
-            INNER JOIN ProductDescriptions pd ON p.Id = pd.ProductId
-            INNER JOIN ProductXml px ON p.Id = px.ProductId
+        FROM CatalogApi.Products p
+            INNER JOIN CatalogApi.ProductDescriptions pd ON p.Id = pd.ProductId
+            INNER JOIN CatalogApi.ProductXml px ON p.Id = px.ProductId
             WHERE pd.Id = {productId};
         """;
     
