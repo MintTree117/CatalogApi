@@ -1,6 +1,6 @@
 using System.Data;
 using CatalogApplication.Database;
-using CatalogApplication.Seed;
+using CatalogApplication.Seeding;
 using CatalogApplication.Types.Brands.Dtos;
 using CatalogApplication.Types.Brands.Models;
 using CatalogApplication.Types.Filters.Models;
@@ -11,8 +11,6 @@ namespace CatalogApplication.Repositories;
 
 internal sealed class BrandRepository
 {
-    readonly bool UsingInMemory = true; // for simplicity in demo-deployment
-    
     readonly IServiceProvider _provider;
     readonly ILogger<BrandRepository> _logger;
     readonly TimeSpan _cacheLifeMinutes = TimeSpan.FromMinutes( 10 );
@@ -27,13 +25,6 @@ internal sealed class BrandRepository
         _provider = provider;
         _logger = logger;
         _timer = new Timer( _ => Update(), null, TimeSpan.Zero, _cacheLifeMinutes );
-        
-        if (!UsingInMemory)
-            return;
-        SeedingService seeder = _provider.GetService<SeedingService>() ?? throw new Exception( "Failed to get SeedingService from Provider." );
-        _filters = new BrandsReply(
-            seeder.BrandsInMemory,
-            seeder.BrandCategoriesInMemory );
     }
 
     internal async Task<BrandsReply?> GetFilters()
@@ -58,9 +49,6 @@ internal sealed class BrandRepository
     }
     async Task<bool> FetchFilters()
     {
-        if (UsingInMemory)
-            return true;
-        
         const string sql =
             """
             SELECT * FROM Brands;

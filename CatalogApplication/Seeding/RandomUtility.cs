@@ -1,4 +1,4 @@
-namespace CatalogApplication.Seed;
+namespace CatalogApplication.Seeding;
 
 internal sealed class RandomUtility
 {

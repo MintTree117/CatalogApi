@@ -1,7 +1,9 @@
-namespace CatalogApplication.Seed.SeedData;
+namespace CatalogApplication.Seeding.SeedData;
 
 internal static class ProductSeedData
 {
+    internal const double MaxPrice = 10000;
+    internal const double MaxRating = 5;
     internal static readonly Dictionary<string, string> ProductNamesByPrimaryCategory = new() {
         { CategorySeedData.PrimaryCategories[0], "Computer" },
         { CategorySeedData.PrimaryCategories[1], "Smartphone" },
@@ -14,8 +16,6 @@ internal static class ProductSeedData
         { CategorySeedData.PrimaryCategories[8], "Appliance" },
         { CategorySeedData.PrimaryCategories[9], "Office Electronic" }
     };
-    
-    internal const double MaxPrice = 10000;
     internal static Dictionary<string, List<string>> ProductImagesByPrimaryCategory = [];
     internal static readonly string[] ProductDescriptions = [
         "This product is crafted with the utmost care to ensure the highest quality. It is designed to meet the needs of customers who value durability and performance. Whether you are using it daily or occasionally, this product will provide reliable service. Its elegant design complements any setting, making it both functional and stylish. The materials used are of premium quality, ensuring long-lasting use. Easy to maintain and user-friendly, it is a perfect addition to your collection. Experience the perfect blend of innovation and tradition with this exceptional product.",
@@ -34,5 +34,4 @@ internal static class ProductSeedData
         "Experience the perfect combination of quality and performance with our product. It is designed to provide reliable service and meet the highest standards of performance. The product is made from premium materials, ensuring it is both durable and stylish. Its user-friendly features make it easy to use and maintain, while its modern design makes it a great addition to any collection. Whether you are using it at home or on the go, this product is designed to provide the best possible experience.",
         "This product is crafted to deliver exceptional performance and reliability. It is designed with the user in mind, offering a range of features that make it practical and easy to use. The high-quality materials used in its construction ensure it will stand the test of time. Its sleek and modern design makes it a stylish addition to any setting. Whether you need it for professional or personal use, this product is a reliable and efficient choice that will meet all your needs."
     ];
-    internal static readonly string[] ProductKeywords = [];
 }

@@ -1,4 +1,4 @@
-namespace CatalogApplication.Seed.SeedData;
+namespace CatalogApplication.Seeding.SeedData;
 
 internal static class CategorySeedData
 {
