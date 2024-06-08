@@ -60,6 +60,9 @@ internal static class Endpoints
 
         // Parse CategoryIds
         List<Guid>? categoryIds = ParseGuidList( query["CategoryIds"] );
+        
+        // Parse SearchText
+        string? searchText = query["SearchText"];
 
         // Parse Address
         int? x = ParseInt( query["Address.X"] );
@@ -67,6 +70,7 @@ internal static class Endpoints
         AddressDto? deliveryAddress = x is null || y is null ? null : new AddressDto( x.Value, y.Value );
 
         SearchQueryRequest queryRequest = new(
+            searchText,
             categoryIds?.Count > 0 ? categoryIds : null,
             productSearchFilters,
             pagination

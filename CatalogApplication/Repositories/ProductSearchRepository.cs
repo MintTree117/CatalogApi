@@ -23,11 +23,19 @@ internal sealed class ProductSearchRepository( IServiceProvider provider, ILogge
         ),
         """;
     // language=sql
-    const string ProductSql = "SELECT p.Id, p.BrandId, p.Name, p.Image, p.Rating, p.Price, p.SalePrice FROM Products p";
-    // language=sql
-    const string CountSql = "SELECT COUNT(*) FROM Products p";
+    const string SearchTextSql =
+        """
+        WHERE p.Name LIKE '%' + @searchText + '%'
+        OR pt.Name LIKE '%' + @searchText + '%';
+        """;
     // language=sql
     const string CategoryJoinSql = " INNER JOIN ProductCategoryFilter pc ON p.Id = pc.ProductId";
+    // language=sql
+    const string SearchTextJoinSql = " INNER JOIN ProductTags pt ON p.Id = pt.ProductId";
+    // language=sql
+    const string ProductSql = "SELECT DISTINCT p.Id, p.BrandId, p.Name, p.Image, p.Rating, p.Price, p.SalePrice FROM Products p";
+    // language=sql
+    const string CountSql = "SELECT COUNT(*) FROM Products p";
     // language=sql
     const string WhereStatementSql = " WHERE 1=1";
     // language=sql
@@ -57,7 +65,6 @@ internal sealed class ProductSearchRepository( IServiceProvider provider, ILogge
             }
 
             BuildSqlQuery( queryRequest, out string sql, out DynamicParameters parameters );
-
             await using SqlMapper.GridReader multi = await connection.QueryMultipleAsync( sql, parameters, commandType: CommandType.Text );
 
             SearchQueryReply queryReply = new(
@@ -79,31 +86,43 @@ internal sealed class ProductSearchRepository( IServiceProvider provider, ILogge
         StringBuilder countBuilder = new();
         DynamicParameters p = new();
         bool hasCategories = searchQuery.CategoryIds is not null && searchQuery.CategoryIds.Count > 0;
+        bool hasSearchText = !string.IsNullOrWhiteSpace( searchQuery.SearchText );
         
-        // CATEGORIES
+        // CATEGORY JOIN
+        if (hasCategories) {
+            productBuilder.Append( CategoryJoinSql );
+            countBuilder.Append( CategoryJoinSql );
+        }
+        // SEARCH TEXT JOIN
+        if (hasSearchText) {
+            productBuilder.Append( SearchTextJoinSql );
+            countBuilder.Append( SearchTextJoinSql );
+        }
+        
+        // MAIN SELECT
+        productBuilder.Append( ProductSql );
+        countBuilder.Append( CountSql );
+        
+        // FILTER BY CATEGORY
         if (hasCategories) {
             productBuilder.Append( CategorySql );
             countBuilder.Append( CategorySql );
             p.Add( "categoryIds", GetDataTable( searchQuery.CategoryIds! ) );
         }
-        
-        // PRODUCTS & COUNT
-        productBuilder.Append( ProductSql );
-        countBuilder.Append( CountSql );
-        
-        // CATEGORIES
-        if (hasCategories) {
-            productBuilder.Append( CategoryJoinSql );
-            countBuilder.Append( CategoryJoinSql );
+        // FILTER BY SEARCH TEXT
+        if (hasSearchText) {
+            productBuilder.Append( SearchTextSql );
+            countBuilder.Append( SearchTextSql );
+            p.Add( "searchText", searchQuery.SearchText );
         }
         
-        // EARLY IF NO FILTERS
+        // EARLY IF NO OTHER FILTERS
         if (searchQuery.ProductSearchFilters is null) {
             Finish( out sql, out parameters );
             return;
         }
         
-        // FILTERS
+        // OTHER FILTERS
         SearchFiltersDto filtersDto = searchQuery.ProductSearchFilters.Value;
         productBuilder.Append( WhereStatementSql );
         
@@ -167,6 +186,7 @@ internal sealed class ProductSearchRepository( IServiceProvider provider, ILogge
             parameters = p;
         }
     }
+    
     static DataTable GetDataTable( List<Guid> ids )
     {
         const string IdColumn = "Id";
