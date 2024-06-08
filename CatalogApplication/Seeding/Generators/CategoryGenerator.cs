@@ -33,7 +33,7 @@ internal static class CategoryGenerator
         foreach ( Category c in categories ) {
             DataRow row = table.NewRow();
             row[nameof( Category.Id )] = c.Id;
-            row[nameof( Category.ParentId )] = c.ParentId;
+            row[nameof( Category.ParentId )] = c.ParentId is null ? DBNull.Value : c.ParentId;
             row[nameof( Category.Name )] = c.Name;
             table.Rows.Add( row );
         }

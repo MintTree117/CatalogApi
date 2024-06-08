@@ -10,7 +10,7 @@ namespace CatalogApplication.Seeding.Generators;
 internal static class ProductGenerator
 {
     const int LoopSafety = 1000;
-    const int ProductsPerPrimaryCategory = 100;
+    const int ProductsPerPrimaryCategory = 10;
 
     internal static ProductSeedingModel GenerateProducts( List<Category> primaryCategories, Dictionary<Guid, List<Category>> secondaryCategories, List<Brand> brands, List<BrandCategory> brandCategories, RandomUtility random )
     {
@@ -61,7 +61,6 @@ internal static class ProductGenerator
         table.Columns.Add( nameof( Product.Id ), typeof( Guid ) );
         table.Columns.Add( nameof( Product.PrimaryCategoryId ), typeof( Guid ) );
         table.Columns.Add( nameof( Product.BrandId ), typeof( Guid ) );
-        table.Columns.Add( nameof( Product.Rating ), typeof( float ) );
         table.Columns.Add( nameof( Product.IsInStock ), typeof( bool ) );
         table.Columns.Add( nameof( Product.IsFeatured ), typeof( bool ) );
         table.Columns.Add( nameof( Product.Name ), typeof( string ) );
@@ -72,15 +71,14 @@ internal static class ProductGenerator
         foreach ( Product p in products ) {
             DataRow row = table.NewRow();
             row[nameof( Product.Id )] = p.Id;
-            row[nameof( Product.PrimaryCategoryId )] = p.Id;
-            row[nameof( Product.BrandId )] = p.Id;
-            row[nameof( Product.Rating )] = p.Id;
-            row[nameof( Product.IsInStock )] = p.Id;
-            row[nameof( Product.IsFeatured )] = p.Id;
-            row[nameof( Product.Name )] = p.Id;
-            row[nameof( Product.Image )] = p.Id;
-            row[nameof( Product.Price )] = p.Id;
-            row[nameof( Product.SalePrice )] = p.Id;
+            row[nameof( Product.PrimaryCategoryId )] = p.PrimaryCategoryId;
+            row[nameof( Product.BrandId )] = p.BrandId;
+            row[nameof( Product.IsInStock )] = p.IsInStock;
+            row[nameof( Product.IsFeatured )] = p.IsFeatured;
+            row[nameof( Product.Name )] = p.Name;
+            row[nameof( Product.Image )] = p.Image;
+            row[nameof( Product.Price )] = p.Price;
+            row[nameof( Product.SalePrice )] = p.SalePrice;
             table.Rows.Add( row );
         }
 
@@ -92,10 +90,10 @@ internal static class ProductGenerator
         table.Columns.Add( nameof( ProductCategory.ProductId ), typeof( Guid ) );
         table.Columns.Add( nameof( ProductCategory.CategoryId ), typeof( Guid ) );
 
-        foreach ( ProductCategory p in productCategories ) {
+        foreach ( ProductCategory pc in productCategories ) {
             DataRow row = table.NewRow();
-            row[nameof( ProductCategory.ProductId )] = p.ProductId;
-            row[nameof( ProductCategory.CategoryId )] = p.CategoryId;
+            row[nameof( ProductCategory.ProductId )] = pc.ProductId;
+            row[nameof( ProductCategory.CategoryId )] = pc.CategoryId;
             table.Rows.Add( row );
         }
 
@@ -148,8 +146,8 @@ internal static class ProductGenerator
     static ProductXml GenerateProductXml( Product product, List<Category> primaryCategories, RandomUtility random )
     {
         // INITIALIZATION
-        Category c = primaryCategories.First( pc => pc.Id == product.Id );
-        Dictionary<string, string[]> specs = ProductXmlSeedData.ProductSpecsByCategoryNew[c.Name];
+        Category c = primaryCategories.First( pc => pc.Id == product.PrimaryCategoryId );
+        Dictionary<string, string[]> specs = ProductXmlSeedData.ProductSpecsByCategory[c.Name];
         List<string> keys = specs.Keys.ToList();
         HashSet<int> specUsed = [];
         int numSpecs = random.GetRandomInt( keys.Count - 1 );
@@ -196,11 +194,13 @@ internal static class ProductGenerator
         XmlElement root = xmlDoc.CreateElement( "ProductSpecs" );
         xmlDoc.AppendChild( root );
 
-        foreach ( var kvp in specsAndValues ) {
-            XmlElement specElement = xmlDoc.CreateElement( kvp.Key );
+        foreach ( KeyValuePair<string, List<string>> kvp in specsAndValues ) {
+            string xmlName = kvp.Key.Replace( ' ', '-' );
+            XmlElement specElement = xmlDoc.CreateElement( xmlName );
             foreach ( string value in kvp.Value ) {
+                string xmlValue = value.Replace( ' ', '-' );
                 XmlElement valueElement = xmlDoc.CreateElement( "Value" );
-                valueElement.InnerText = value;
+                valueElement.InnerText = xmlValue;
                 specElement.AppendChild( valueElement );
             }
             root.AppendChild( specElement );

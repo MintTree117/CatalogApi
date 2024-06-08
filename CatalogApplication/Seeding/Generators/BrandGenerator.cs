@@ -30,7 +30,6 @@ internal static class BrandGenerator
                     continue;
                 Category category = categories.First( c => c.Name == kvp.Key );
                 brandCategories.Add( new BrandCategory( b.Id, category.Id ) );
-                break;
             }
         }
 

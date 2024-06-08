@@ -13,7 +13,7 @@ builder.Services.AddSingleton<CategoryRepository>();
 builder.Services.AddSingleton<InventoryRepository>();
 builder.Services.AddSingleton<ProductDetailsRepository>();
 builder.Services.AddSingleton<ProductSearchRepository>();
-builder.Services.AddScoped<SeedingService>();
+builder.Services.AddSingleton<SeedingService>();
 
 WebApplication app = builder.Build();
 

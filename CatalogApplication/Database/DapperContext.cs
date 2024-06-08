@@ -14,7 +14,7 @@ internal sealed class DapperContext : IDapperContext
     readonly bool _noString = true;
 
     // Public Methods
-    internal DapperContext( IConfiguration config )
+    public DapperContext( IConfiguration config )
     {
         try {
             _connectionString = config["ConnectionString"] ?? string.Empty;

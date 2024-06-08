@@ -2,7 +2,7 @@ namespace CatalogApplication.Seeding.SeedData;
 
 internal static class ProductXmlSeedData
 {
-    internal static readonly Dictionary<string, Dictionary<string, string[]>> ProductSpecsByCategoryNew = new() {
+    internal static readonly Dictionary<string, Dictionary<string, string[]>> ProductSpecsByCategory = new() {
         // Computers & Laptops
         {
             CategorySeedData.PrimaryCategories[0], new Dictionary<string, string[]> {
@@ -244,7 +244,6 @@ internal static class ProductXmlSeedData
                 { "Tracking Sensors", ["Accelerometer", "Gyroscope", "Magnetometer", "Other"] },
                 { "Controller Type", ["Handheld Controller", "Hand Tracking", "Other"] },
                 { "Wearable Accessory Type", ["Charging Cable", "Replacement Straps", "Screen Protectors", "Other"] },
-                { "Compatibility", ["iOS", "Android", "iOS & Android", "Other"] },
                 { "Adjustability", ["Adjustable Strap", "Buckle Closure", "Hook-and-loop Closure", "Other"] },
                 { "Charging Type", ["USB Type-C", "Proprietary Charger", "Wireless Charging", "Other"] }
             }
