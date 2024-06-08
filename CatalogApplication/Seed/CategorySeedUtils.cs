@@ -2,12 +2,19 @@ using System.Data;
 using CatalogApplication.Database;
 using CatalogApplication.Types.Categories;
 using CatalogApplication.Types.ReplyTypes;
+using CatalogTests;
 using Dapper;
 
-namespace CatalogTests.Seeding.Utils;
+namespace CatalogApplication.Seed;
 
 internal static class CategorySeedUtils
 {
+    // TODO: Move to legitimate database
+    public static Replies<Category> SeedCategoriesInMemory( RandomUtility random )
+    {
+        List<Category> categories = GenerateCategories( random );
+        return Replies<Category>.With( categories );
+    }
     public static async Task<Replies<Category>> SeedCategories( IDapperContext dapper, RandomUtility random )
     {
         const string tvpName = "CategoriesTvp";

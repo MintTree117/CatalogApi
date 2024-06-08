@@ -3,12 +3,20 @@ using CatalogApplication.Database;
 using CatalogApplication.Types.Categories;
 using CatalogApplication.Types.Filters.Models;
 using CatalogApplication.Types.ReplyTypes;
+using CatalogTests;
 using Dapper;
 
-namespace CatalogTests.Seeding.Utils;
+namespace CatalogApplication.Seed;
 
 internal static class BrandSeedUtils
 {
+    // TODO: Move to legitimate database
+    public static (Replies<Brand>, Replies<BrandCategory>) SeedBrandsInMemory( List<Category> categories, RandomUtility random )
+    {
+        List<Brand> brands = GenerateBrands();
+        List<BrandCategory> brandCategories = GenerateBrandCategories( brands, categories, random );
+        return (Replies<Brand>.With( brands ), Replies<BrandCategory>.With( brandCategories ));
+    }
     public static async Task<(Replies<Brand>, Replies<BrandCategory>)> SeedBrands( IDapperContext dapper, List<Category> categories, RandomUtility random )
     {
         const string tvpBrands = "BrandsTvp";

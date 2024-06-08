@@ -1,4 +1,5 @@
 using CatalogApplication.Database;
+using CatalogApplication.Seed;
 using CatalogApplication.Types.Categories;
 using CatalogApplication.Types.ReplyTypes;
 
@@ -6,6 +7,8 @@ namespace CatalogApplication.Repositories;
 
 internal sealed class CategoryRepository // SINGLETON
 {
+    readonly bool UsingInMemory = true; // for simplicity in demo-deployment
+    
     readonly IServiceProvider _provider;
     readonly ILogger<CategoryRepository> _logger;
     readonly TimeSpan _cacheLifeMinutes = TimeSpan.FromMinutes( 10 );
@@ -21,6 +24,11 @@ internal sealed class CategoryRepository // SINGLETON
         _provider = provider;
         _logger = logger;
         _timer = new Timer( _ => Update(), null, TimeSpan.Zero, _cacheLifeMinutes );
+        
+        if (!UsingInMemory) 
+            return;
+        SeedingService seeder = _provider.GetService<SeedingService>() ?? throw new Exception( "Failed to get SeedingService from Provider." );
+        _cachedCategories = seeder.CategoriesInMemory;
     }
 
     internal async Task<IEnumerable<Category>> GetCategories()
@@ -45,6 +53,9 @@ internal sealed class CategoryRepository // SINGLETON
     }
     async Task<bool> FetchCategories()
     {
+        if (UsingInMemory)
+            return true;
+        
         const string sql = "SELECT * FROM Categories";
 
         IDapperContext dapper = IDapperContext.GetContext( _provider );
