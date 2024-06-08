@@ -1,11 +1,18 @@
-namespace CatalogTests;
-
-using System;
+namespace CatalogApplication.Seed;
 
 internal sealed class RandomUtility
 {
     readonly Random random = new();
     
+    public bool GetRandomBool() =>
+        random.Next( 2 ) == 1;
+    public bool GetRandomBool( double probability )
+    {
+        if (probability is < 0.0f or > 1.0f)
+            throw new ArgumentOutOfRangeException( nameof( probability ), "Probability must be between 0 and 1." );
+
+        return random.NextDouble() < probability;
+    }
     public int GetRandomInt() => 
         random.Next();
     public int GetRandomInt( int max ) => 

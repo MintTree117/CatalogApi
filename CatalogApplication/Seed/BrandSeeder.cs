@@ -3,12 +3,11 @@ using CatalogApplication.Database;
 using CatalogApplication.Types.Categories;
 using CatalogApplication.Types.Filters.Models;
 using CatalogApplication.Types.ReplyTypes;
-using CatalogTests;
 using Dapper;
 
 namespace CatalogApplication.Seed;
 
-internal static class BrandSeedUtils
+internal static class BrandSeeder
 {
     // TODO: Move to legitimate database
     public static (Replies<Brand>, Replies<BrandCategory>) SeedBrandsInMemory( List<Category> categories, RandomUtility random )
