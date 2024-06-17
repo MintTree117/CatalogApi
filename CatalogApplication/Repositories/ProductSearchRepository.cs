@@ -8,10 +8,10 @@ using Microsoft.Data.SqlClient;
 
 namespace CatalogApplication.Repositories;
 
-internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<ProductSearchRepository> logger )
+internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<ProductSearchRepository> logger ) 
+    : BaseRepository<ProductSearchRepository>( logger )
 {
     readonly IDapperContext _dapper = dapper;
-    readonly ILogger<ProductSearchRepository> _logger = logger;
 
     // language=sql
     const string CategorySql =
@@ -57,7 +57,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             await using SqlConnection connection = await _dapper.GetOpenConnection();
 
             if (connection.State != ConnectionState.Open) {
-                _logger.LogError( $"Invalid connection state: {connection.State}" );
+                LogError( $"Invalid connection state: {connection.State}" );
                 return null;
             }
 
@@ -71,7 +71,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             return queryReply;
         }
         catch ( Exception e ) {
-            _logger.LogError( e, $"An exception occured while executing product search: {e.Message}" );
+            LogException( e, $"An exception occured while executing product search: {e.Message}" );
             return null;
         }
     }

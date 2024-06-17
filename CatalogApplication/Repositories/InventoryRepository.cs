@@ -1,16 +1,14 @@
 using CatalogApplication.Database;
 using CatalogApplication.Types._Common.Geography;
-using CatalogApplication.Types._Common.ReplyTypes;
 using CatalogApplication.Types.Search.Dtos;
 using CatalogApplication.Types.Stock;
 
 namespace CatalogApplication.Repositories;
 
-internal sealed class InventoryRepository
+internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
 {
     readonly IServiceProvider _provider;
     readonly IDapperContext _dapper;
-    readonly ILogger<InventoryRepository> _logger;
     readonly TimeSpan _cacheLifetime = TimeSpan.FromMinutes( 30 );
     readonly object _cacheLock = new();
 
@@ -36,19 +34,18 @@ internal sealed class InventoryRepository
         int Quantity );
     
     // CONSTRUCTOR
-    public InventoryRepository( IServiceProvider provider, IDapperContext dapper, ILogger<InventoryRepository> logger )
+    public InventoryRepository( IServiceProvider provider, IDapperContext dapper, ILogger<InventoryRepository> logger ) : base( logger )
     {
         _provider = provider;
         _dapper = dapper;
-        _logger = logger;
         _cacheTimer = new Timer( _ => OnCacheTimer(), null, TimeSpan.Zero, _cacheLifetime );
 
         async void OnCacheTimer()
         {
             if (await RefreshInventory())
-                _logger.LogInformation( "Refreshed Inventory Repository" );
+                LogInformation( "Refreshed inventory repository" );
             else
-                _logger.LogError( "Failed to refresh Inventory Repository" );
+                LogError( "Failed to refresh inventory repository" );
         }
     }
     
@@ -63,7 +60,7 @@ internal sealed class InventoryRepository
             return await CalculateEstimates( items, deliveryAddress.Value );
         }
         catch ( Exception e ) {
-            _logger.LogError( e, $"An error occured while executing GetDeliveryEstimateDays() : {e.Message}" );
+            LogException( e, $"An error occured while executing GetDeliveryEstimateDays() : {e.Message}" );
             return [];
         }
     }

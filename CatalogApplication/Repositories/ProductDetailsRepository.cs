@@ -6,10 +6,9 @@ using Microsoft.Data.SqlClient;
 
 namespace CatalogApplication.Repositories;
 
-internal sealed class ProductDetailsRepository
+internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRepository>
 {
     readonly IDapperContext _dapper;
-    readonly ILogger<ProductDetailsRepository> _logger;
     readonly TimeSpan _cacheLifeMinutes = TimeSpan.FromMinutes( 5 );
     readonly object _cacheLock = new();
     
@@ -33,10 +32,9 @@ internal sealed class ProductDetailsRepository
             WHERE pd.Id = {productId};
         """;
     
-    public ProductDetailsRepository( IDapperContext dapper, ILogger<ProductDetailsRepository> logger )
+    public ProductDetailsRepository( IDapperContext dapper, ILogger<ProductDetailsRepository> logger ) : base( logger )
     {
         _dapper = dapper;
-        _logger = logger;
         _timer = new Timer( _ => Cleanup(), null, TimeSpan.Zero, _cacheLifeMinutes );
     }
 
@@ -55,7 +53,7 @@ internal sealed class ProductDetailsRepository
             await using SqlConnection connection = await _dapper.GetOpenConnection();
 
             if (connection.State != ConnectionState.Open) {
-                _logger.LogError( $"Invalid connection state: {connection.State}" );
+                LogError( $"Invalid connection state: {connection.State}" );
                 return false;
             }
 
@@ -70,7 +68,7 @@ internal sealed class ProductDetailsRepository
             return true;
         }
         catch ( Exception e ) {
-            _logger.LogError( e, $"Error while attempting to fetch product details from repository: {e.Message}" );
+            LogException( e, $"Error while attempting to fetch product details from repository: {e.Message}" );
             return false;
         }
     }

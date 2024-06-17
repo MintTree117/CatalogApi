@@ -10,20 +10,22 @@ internal sealed class DapperContext : IDapperContext
     // Fields
     const string InvalidConnectionMessage = "Invalid Connection State: ";
     const string ExceptionMessage = "An internal server error occured.";
-    readonly string _connectionString = string.Empty;
+    readonly string _connectionString;
     readonly bool _noString = true;
 
     // Public Methods
     public DapperContext( IConfiguration config )
     {
-        try {
-            _connectionString = config["ConnectionString"] ?? string.Empty;
+        try
+        {
+            _connectionString = config["ConnectionString"] ?? throw new Exception( "DapperContext failed to get connection string from configuration." );
 
             if (!string.IsNullOrEmpty( _connectionString ))
                 _noString = false;
         }
-        catch ( Exception e ) {
-            Console.WriteLine( $"Failed to get connection string in DapperContext! : {e}" );
+        catch ( Exception e )
+        {
+            throw new Exception( $"DapperContext unexpected exception thrown in constructor. {e}" );
         }
     }
     public async Task<SqlConnection> GetOpenConnection()
@@ -40,15 +42,16 @@ internal sealed class DapperContext : IDapperContext
         await using SqlConnection c = await GetOpenConnection();
 
         if (c.State != ConnectionState.Open)
-            return Replies<T>.Fail( InvalidConnectionMessage + c.State );
+            return Replies<T>.ServerError( InvalidConnectionMessage + c.State );
 
-        try {
+        try 
+        {
             IEnumerable<T> enumerable = await c.QueryAsync<T>( sql, parameters, commandType: CommandType.Text );
             return Replies<T>.Success( enumerable );
         }
-        catch ( Exception e ) {
-            Console.WriteLine( e );
-            return Replies<T>.Fail( ExceptionMessage );
+        catch ( Exception e ) 
+        {
+            return Replies<T>.ServerError( ExceptionMessage );
         }
     }
     public async Task<Reply<T>> QueryFirstOrDefaultAsync<T>( string sql, DynamicParameters? parameters = null )
@@ -56,17 +59,18 @@ internal sealed class DapperContext : IDapperContext
         await using SqlConnection c = await GetOpenConnection();
 
         if (c.State != ConnectionState.Open)
-            return Reply<T>.Failure( InvalidConnectionMessage + c.State );
+            return Reply<T>.ServerError( InvalidConnectionMessage + c.State );
 
-        try {
+        try 
+        {
             var item = await c.QueryFirstOrDefaultAsync<T>( sql, parameters, commandType: CommandType.Text );
             return item is not null
                 ? Reply<T>.Success( item )
                 : Reply<T>.Failure( "Not Found." );
         }
-        catch ( Exception e ) {
-            Console.WriteLine( e );
-            return Reply<T>.Failure( ExceptionMessage );
+        catch ( Exception e ) 
+        {
+            return Reply<T>.ServerError( ExceptionMessage );
         }
     }
     public async Task<Reply<int>> ExecuteAsync( string sql, DynamicParameters? parameters = null )
@@ -74,17 +78,18 @@ internal sealed class DapperContext : IDapperContext
         await using SqlConnection c = await GetOpenConnection();
 
         if (c.State != ConnectionState.Open)
-            return Reply<int>.Failure( InvalidConnectionMessage + c.State );
+            return Reply<int>.ServerError( InvalidConnectionMessage + c.State );
 
-        try {
+        try 
+        {
             int result = await c.ExecuteAsync( sql, parameters, commandType: CommandType.Text );
             return result > 0
                 ? Reply<int>.Success( result )
-                : Reply<int>.Failure( "No Rows Altered" );
+                : Reply<int>.ServerError( "No rows altered." );
         }
-        catch ( Exception e ) {
-            Console.WriteLine( e );
-            return Reply<int>.Failure( ExceptionMessage );
+        catch ( Exception e ) 
+        {
+            return Reply<int>.ServerError( ExceptionMessage );
         }
     }
     public async Task<Reply<int>> ExecuteStoredProcedure( string procedureName, DynamicParameters? parameters = null )
@@ -92,17 +97,18 @@ internal sealed class DapperContext : IDapperContext
         await using SqlConnection c = await GetOpenConnection();
 
         if (c.State != ConnectionState.Open)
-            return Reply<int>.Failure( InvalidConnectionMessage + c.State );
+            return Reply<int>.ServerError( InvalidConnectionMessage + c.State );
 
-        try {
+        try 
+        {
             int result = await c.ExecuteAsync( procedureName, parameters, commandType: CommandType.StoredProcedure );
             return result > 0
                 ? Reply<int>.Success( result )
-                : Reply<int>.Failure( "No Rows Altered" );
+                : Reply<int>.ServerError( "No rows altered." );
         }
-        catch ( Exception e ) {
-            Console.WriteLine( e );
-            return Reply<int>.Failure( ExceptionMessage );
+        catch ( Exception e ) 
+        {
+            return Reply<int>.ServerError( ExceptionMessage );
         }
     }
 }

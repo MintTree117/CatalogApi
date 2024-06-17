@@ -1,9 +1,18 @@
 using CatalogApplication;
 using CatalogApplication.Database;
+using CatalogApplication.Middleware;
 using CatalogApplication.Repositories;
 using CatalogApplication.Seeding;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder( args );
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+EndpointLogger.Logger = builder.Services
+    .BuildServiceProvider()
+    .GetRequiredService<ILoggerFactory>()
+    .CreateLogger<EndpointLogger>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -17,6 +26,9 @@ builder.Services.AddSingleton<ProductSearchRepository>();
 builder.Services.AddSingleton<SeedingService>();
 
 WebApplication app = builder.Build();
+
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+app.UseMiddleware<RequestResponseLoggingMiddleware>();
 
 if (app.Environment.IsDevelopment()) {
     app.UseSwagger();
