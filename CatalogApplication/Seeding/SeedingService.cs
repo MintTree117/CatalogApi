@@ -22,16 +22,16 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
     internal async Task SeedDatabase()
     {
         // CLEAR CATALOG
-        Reply<int> clearReply = await _dapper.ExecuteStoredProcedure( "CatalogApi.ClearCatalog" );
-        if (!clearReply.IsSuccess)
-            _logger.LogWarning( $"Failed to clear database during seeding: {clearReply.Message()}" );
+        var clearReply = await _dapper.ExecuteStoredProcedure( "CatalogApi.ClearCatalog" );
+        if (!clearReply)
+            _logger.LogWarning( $"Failed to clear database during seeding: {clearReply.GetMessage()}" );
         else
             _logger.LogInformation( "Cleared Catalog." );
         
         // CATEGORIES
-        Replies<Category> categoriesReply = await SeedCategories();
-        if (!categoriesReply.IsSuccess)
-            throw new Exception( $"Failed to seed Categories during seeding: {categoriesReply.Message()}" );
+        var categoriesReply = await SeedCategories();
+        if (!categoriesReply)
+            throw new Exception( $"Failed to seed Categories during seeding: {categoriesReply.GetMessage()}" );
         (List<Category>, Dictionary<Guid, List<Category>>) sortedCategories = 
             SortCategories( categoriesReply.Enumerable.ToList() );
         
@@ -43,10 +43,10 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
         
         // BRANDS
         (Replies<Brand>, Replies<BrandCategory>) brandsReply = await SeedBrands( sortedCategories.Item1 );
-        if (!brandsReply.Item1.IsSuccess)
-            throw new Exception( $"Failed to seed Brands during seeding: {brandsReply.Item1.Message()}" );
-        if (!brandsReply.Item2.IsSuccess)
-            throw new Exception( $"Failed to seed BrandCategories during seeding: {brandsReply.Item2.Message()}" );
+        if (!brandsReply.Item1)
+            throw new Exception( $"Failed to seed Brands during seeding: {brandsReply.Item1.GetMessage()}" );
+        if (!brandsReply.Item2)
+            throw new Exception( $"Failed to seed BrandCategories during seeding: {brandsReply.Item2.GetMessage()}" );
 
         _logger.LogInformation( "----------------------------------------------------------------------------------------------" );
         _logger.LogInformation( "SEEDED BRANDS" );
@@ -55,10 +55,10 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
         _logger.LogInformation( $"BrandCategories Count: {brandsReply.Item2.Enumerable.Count()}" );
         
         // PRODUCTS
-        Reply<ProductSeedingModel> productsReply = 
+        var productsReply = 
             await SeedProducts( sortedCategories.Item1, sortedCategories.Item2, brandsReply.Item1.Enumerable.ToList(), brandsReply.Item2.Enumerable.ToList() );
-        if (!productsReply.IsSuccess)
-            throw new Exception( $"Failed to seed Products during seeding: {productsReply.Message()}" );
+        if (!productsReply)
+            throw new Exception( $"Failed to seed Products during seeding: {productsReply.GetMessage()}" );
 
         _logger.LogInformation( "----------------------------------------------------------------------------------------------" );
         _logger.LogInformation( "SEEDED PRODUCTS" );
@@ -69,15 +69,15 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
         _logger.LogInformation( $"ProductXmls Count: {productsReply.Data.ProductXmls.Count}" );
         
         // WAREHOUSES
-        Replies<Warehouse> warehousesReply = await SeedWarehouses();
-        if (!warehousesReply.IsSuccess)
-            throw new Exception( $"Failed to seed Warehouses during seeding: {warehousesReply.Message()}" );
+        var warehousesReply = await SeedWarehouses();
+        if (!warehousesReply)
+            throw new Exception( $"Failed to seed Warehouses during seeding: {warehousesReply.GetMessage()}" );
         _logger.LogInformation( "Seeded Warehouses." );
         
         // INVENTORIES
-        Reply<bool> inventoriesReply = await SeedInventory( productsReply.Data.Products, warehousesReply.Enumerable.ToList() );
-        if (!inventoriesReply.IsSuccess)
-            throw new Exception( $"Failed to seed Inventories during seeding: {inventoriesReply.Message()}" );
+        var inventoriesReply = await SeedInventory( productsReply.Data.Products, warehousesReply.Enumerable.ToList() );
+        if (!inventoriesReply)
+            throw new Exception( $"Failed to seed Inventories during seeding: {inventoriesReply.GetMessage()}" );
         _logger.LogInformation( "Seeded Inventories." );
     }
 
@@ -90,15 +90,15 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
             FROM @CategoriesTvp
             """;
 
-        List<Category> categories = CategoryGenerator.GenerateCategories();
-        DataTable tableParam = CategoryGenerator.GenerateCategoriesTable( categories );
-        DynamicParameters parameters = new();
+        var categories = CategoryGenerator.GenerateCategories();
+        var tableParam = CategoryGenerator.GenerateCategoriesTable( categories );
+        var parameters = new DynamicParameters();
         parameters.Add( "CategoriesTvp", tableParam.AsTableValuedParameter( "CatalogApi.CategoriesTvp" ) );
 
-        Reply<int> result = await _dapper.ExecuteAsync( sql, parameters );
-        return result.IsSuccess && result.Data > 0
-            ? Replies<Category>.With( categories )
-            : Replies<Category>.None( result );
+        var result = await _dapper.ExecuteAsync( sql, parameters );
+        return result && result.Data > 0
+            ? Replies<Category>.Success( categories )
+            : Replies<Category>.Fail( result );
     }
     async Task<(Replies<Brand>, Replies<BrandCategory>)> SeedBrands( List<Category> categories )
     {
@@ -115,48 +115,48 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
             FROM @BrandCategoriesTvp;
             """;
 
-        List<Brand> brands = BrandGenerator.GenerateBrands();
-        List<BrandCategory> brandCategories = BrandGenerator.GenerateBrandCategories( brands, categories );
+        var brands = BrandGenerator.GenerateBrands();
+        var brandCategories = BrandGenerator.GenerateBrandCategories( brands, categories );
 
-        DataTable brandsTable = BrandGenerator.GenerateBrandsTable( brands );
-        DataTable brandCategoriesTable = BrandGenerator.GenerateBrandCategoriesTable( brandCategories );
+        using var brandsTable = BrandGenerator.GenerateBrandsTable( brands );
+        using var brandCategoriesTable = BrandGenerator.GenerateBrandCategoriesTable( brandCategories );
 
-        DynamicParameters brandsParameters = new();
+        var brandsParameters = new DynamicParameters();
+        var brandCategoriesParameters = new DynamicParameters();
         brandsParameters.Add( "BrandsTvp", brandsTable.AsTableValuedParameter( "CatalogApi.BrandsTvp" ) );
-        DynamicParameters brandCategoriesParameters = new();
         brandCategoriesParameters.Add( "BrandCategoriesTvp", brandCategoriesTable.AsTableValuedParameter( "CatalogApi.BrandCategoriesTvp" ) );
 
-        Reply<int> brandsReply = await _dapper.ExecuteAsync( brandsSql, brandsParameters );
-        if (!brandsReply.IsSuccess || brandsReply.Data <= 0)
-            return (Replies<Brand>.With( brands ), Replies<BrandCategory>.None());
+        var brandsReply = await _dapper.ExecuteAsync( brandsSql, brandsParameters );
+        if (!brandsReply || brandsReply.Data <= 0)
+            return (Replies<Brand>.Success( brands ), Replies<BrandCategory>.Fail());
 
-        Reply<int> brandCategoriesReply = await _dapper.ExecuteAsync( brandCategoriesSql, brandCategoriesParameters );
-        return brandCategoriesReply.IsSuccess && brandsReply.Data > 0
-            ? (Replies<Brand>.With( brands ), Replies<BrandCategory>.With( brandCategories ))
-            : (Replies<Brand>.With( brands ), Replies<BrandCategory>.None( brandCategoriesReply.Message() ));
+        var brandCategoriesReply = await _dapper.ExecuteAsync( brandCategoriesSql, brandCategoriesParameters );
+        return brandCategoriesReply && brandsReply.Data > 0
+            ? (Replies<Brand>.Success( brands ), Replies<BrandCategory>.Success( brandCategories ))
+            : (Replies<Brand>.Success( brands ), Replies<BrandCategory>.Fail( brandCategoriesReply.GetMessage() ));
     }
     async Task<Reply<ProductSeedingModel>> SeedProducts( List<Category> primaryCategories, Dictionary<Guid,List<Category>> secondaryCategories, List<Brand> brands, List<BrandCategory> brandCategories )
     {
         ProductSeedingModel seed = await Task.Run( () => 
             ProductGenerator.GenerateProducts( primaryCategories, secondaryCategories, brands, brandCategories, _random ) );
 
-        Reply<bool> productsReply = await InsertProducts( _dapper, seed.Products );
-        if (!productsReply.IsSuccess)
-            return Reply<ProductSeedingModel>.None( productsReply );
+        var productsReply = await InsertProducts( _dapper, seed.Products );
+        if (!productsReply)
+            return Reply<ProductSeedingModel>.Failure( productsReply );
 
-        Reply<bool> productCategoriesReply = await InsertProductCategories( _dapper, seed.ProductCategories );
-        if (!productCategoriesReply.IsSuccess)
-            return Reply<ProductSeedingModel>.None( productCategoriesReply );
+        var productCategoriesReply = await InsertProductCategories( _dapper, seed.ProductCategories );
+        if (!productCategoriesReply)
+            return Reply<ProductSeedingModel>.Failure( productCategoriesReply );
 
-        Reply<bool> productDescriptionsReply = await InsertProductDescriptions( _dapper, seed.ProductDescriptions );
-        if (!productDescriptionsReply.IsSuccess)
-            return Reply<ProductSeedingModel>.None( productDescriptionsReply );
+        var productDescriptionsReply = await InsertProductDescriptions( _dapper, seed.ProductDescriptions );
+        if (!productDescriptionsReply)
+            return Reply<ProductSeedingModel>.Failure( productDescriptionsReply );
 
-        Reply<bool> productXmlsReply = await InsertProductXmls( _dapper, seed.ProductXmls );
-        if (!productXmlsReply.IsSuccess)
-            return Reply<ProductSeedingModel>.None( productXmlsReply );
+        var productXmlsReply = await InsertProductXmls( _dapper, seed.ProductXmls );
+        if (!productXmlsReply)
+            return Reply<ProductSeedingModel>.Failure( productXmlsReply );
         
-        return Reply<ProductSeedingModel>.With( seed );
+        return Reply<ProductSeedingModel>.Success( seed );
     }
     async Task<Replies<Warehouse>> SeedWarehouses()
     {
@@ -167,28 +167,28 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
             FROM @WarehousesTvp
             """;
 
-        List<Warehouse> warehouses = WarehouseGenerator.GenerateWarehouses();
-        DataTable tableParam = WarehouseGenerator.GenerateWarehousesTable( warehouses );
-        DynamicParameters parameters = new();
+        var warehouses = WarehouseGenerator.GenerateWarehouses();
+        using var tableParam = WarehouseGenerator.GenerateWarehousesTable( warehouses );
+        var parameters = new DynamicParameters();
         parameters.Add( "WarehousesTvp", tableParam.AsTableValuedParameter( "CatalogApi.WarehousesTvp" ) );
 
-        Reply<int> reply = await _dapper.ExecuteAsync( Sql, parameters );
-        return reply.IsSuccess
-            ? Replies<Warehouse>.With( warehouses )
-            : Replies<Warehouse>.None( reply );
+        var reply = await _dapper.ExecuteAsync( Sql, parameters );
+        return reply
+            ? Replies<Warehouse>.Success( warehouses )
+            : Replies<Warehouse>.Fail( reply );
     }
     async Task<Reply<bool>> SeedInventory( List<Product> products, List<Warehouse> warehouses )
     {
-        List<ProductInventory> inventories = InventoryGenerator.GenerateInventories( products, warehouses, _random );
-        DataTable tableParam = InventoryGenerator.GenerateInventoryTable( inventories );
+        var inventories = InventoryGenerator.GenerateInventories( products, warehouses, _random );
+        using var tableParam = InventoryGenerator.GenerateInventoryTable( inventories );
 
-        DynamicParameters parameters = new();
+        var parameters = new DynamicParameters();
         parameters.Add( "ProductInventoriesTvp", tableParam.AsTableValuedParameter( "CatalogApi.ProductInventoriesTvp" ) );
 
-        Reply<bool> reply = await InsertInventories( _dapper, inventories );
-        return reply.IsSuccess
-            ? Reply<bool>.With( true )
-            : Reply<bool>.None( reply );
+        var reply = await InsertInventories( _dapper, inventories );
+        return reply
+            ? Reply<bool>.Success( true )
+            : Reply<bool>.Failure( reply );
     }
 
     static async Task<Reply<bool>> InsertInventories( IDapperContext dapper, List<ProductInventory> inventories )
@@ -203,19 +203,19 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
         int index = 0;
         while ( index < inventories.Count )
         {
-            List<ProductInventory> productsSubset = inventories.Skip( index ).Take( DatabaseInsertPageSize ).ToList();
-            DataTable tableParam = InventoryGenerator.GenerateInventoryTable( productsSubset );
-            DynamicParameters parameters = new();
+            var productsSubset = inventories.Skip( index ).Take( DatabaseInsertPageSize ).ToList();
+            using var tableParam = InventoryGenerator.GenerateInventoryTable( productsSubset );
+            var parameters = new DynamicParameters();
             parameters.Add( "ProductInventoriesTvp", tableParam.AsTableValuedParameter( "CatalogApi.ProductInventoriesTvp" ) );
 
-            Reply<int> result = await dapper.ExecuteAsync( sql, parameters );
-            if (!result.IsSuccess)
-                return Reply<bool>.None( result );
+            var result = await dapper.ExecuteAsync( sql, parameters );
+            if (!result)
+                return Reply<bool>.Failure( result );
 
             index += DatabaseInsertPageSize;
         }
 
-        return Reply<bool>.With( true );
+        return Reply<bool>.Success( true );
     }
     
     static async Task<Reply<bool>> InsertProducts( IDapperContext dapper, List<Product> products )
@@ -228,20 +228,20 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
             """;
         
         int index = 0;
+        List<Product> productsSubset = products.Skip( index ).Take( DatabaseInsertPageSize ).ToList();
         while ( index < products.Count ) {
-            List<Product> productsSubset = products.Skip( index ).Take( DatabaseInsertPageSize ).ToList();
-            DataTable tableParam = ProductGenerator.GenerateProductsTable( productsSubset );
-            DynamicParameters parameters = new();
+            using var tableParam = ProductGenerator.GenerateProductsTable( productsSubset );
+            var parameters = new DynamicParameters();
             parameters.Add( "ProductsTvp", tableParam.AsTableValuedParameter( "CatalogApi.ProductsTvp" ) );
 
-            Reply<int> result = await dapper.ExecuteAsync( sql, parameters );
-            if (!result.IsSuccess)
-                return Reply<bool>.None( result );
+            var result = await dapper.ExecuteAsync( sql, parameters );
+            if (!result)
+                return Reply<bool>.Failure( result );
 
             index += DatabaseInsertPageSize;
         }
 
-        return Reply<bool>.With( true );
+        return Reply<bool>.Success( true );
     }
     static async Task<Reply<bool>> InsertProductCategories( IDapperContext dapper, List<ProductCategory> productCategories )
     {
@@ -254,19 +254,19 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
 
         int index = 0;
         while ( index < productCategories.Count ) {
-            List<ProductCategory> categoriesSubset = productCategories.Skip( index ).Take( DatabaseInsertPageSize ).ToList();
-            DataTable tableParam = ProductGenerator.GenerateProductCategoriesTable( categoriesSubset );
-            DynamicParameters parameters = new();
+            var categoriesSubset = productCategories.Skip( index ).Take( DatabaseInsertPageSize ).ToList();
+            var tableParam = ProductGenerator.GenerateProductCategoriesTable( categoriesSubset );
+            var parameters = new DynamicParameters();
             parameters.Add( "ProductCategoriesTvp", tableParam.AsTableValuedParameter( "CatalogApi.ProductCategoriesTvp" ) );
 
-            Reply<int> result = await dapper.ExecuteAsync( Sql, parameters );
-            if (!result.IsSuccess)
-                return Reply<bool>.None( result );
+            var result = await dapper.ExecuteAsync( Sql, parameters );
+            if (!result)
+                return Reply<bool>.Failure( result );
 
             index += DatabaseInsertPageSize;
         }
 
-        return Reply<bool>.With( true );
+        return Reply<bool>.Success( true );
     }
     static async Task<Reply<bool>> InsertProductDescriptions( IDapperContext dapper, List<ProductDescription> productDescriptions )
     {
@@ -279,19 +279,19 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
 
         int index = 0;
         while ( index < productDescriptions.Count ) {
-            List<ProductDescription> descriptionsSubset = productDescriptions.Skip( index ).Take( DatabaseInsertPageSize ).ToList();
-            DataTable tableParam = ProductGenerator.GenerateProductDescriptionsTable( descriptionsSubset );
-            DynamicParameters parameters = new();
+            var descriptionsSubset = productDescriptions.Skip( index ).Take( DatabaseInsertPageSize ).ToList();
+            using var tableParam = ProductGenerator.GenerateProductDescriptionsTable( descriptionsSubset );
+            var parameters = new DynamicParameters();
             parameters.Add( "ProductDescriptionsTvp", tableParam.AsTableValuedParameter( "CatalogApi.ProductDescriptionsTvp" ) );
 
-            Reply<int> result = await dapper.ExecuteAsync( Sql, parameters );
-            if (!result.IsSuccess)
-                return Reply<bool>.None( result );
+            var result = await dapper.ExecuteAsync( Sql, parameters );
+            if (!result)
+                return Reply<bool>.Failure( result );
 
             index += DatabaseInsertPageSize;
         }
 
-        return Reply<bool>.With( true );
+        return Reply<bool>.Success( true );
     }
     static async Task<Reply<bool>> InsertProductXmls( IDapperContext dapper, List<ProductXml> productXmls )
     {
@@ -304,29 +304,29 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
 
         int index = 0;
         while ( index < productXmls.Count ) {
-            List<ProductXml> xmlsSubset = productXmls.Skip( index ).Take( DatabaseInsertPageSize ).ToList();
-            DataTable tableParam = ProductGenerator.GenerateProductXmlTable( xmlsSubset );
-            DynamicParameters parameters = new();
+            var xmlsSubset = productXmls.Skip( index ).Take( DatabaseInsertPageSize ).ToList();
+            var tableParam = ProductGenerator.GenerateProductXmlTable( xmlsSubset );
+            var parameters = new DynamicParameters();
             parameters.Add( "ProductXmlsTvp", tableParam.AsTableValuedParameter( "CatalogApi.ProductXmlsTvp" ) );
 
-            Reply<int> result = await dapper.ExecuteAsync( Sql, parameters );
-            if (!result.IsSuccess)
-                return Reply<bool>.None( result );
+            var result = await dapper.ExecuteAsync( Sql, parameters );
+            if (!result)
+                return Reply<bool>.Failure( result );
 
             index += DatabaseInsertPageSize;
         }
 
-        return Reply<bool>.With( true );
+        return Reply<bool>.Success( true );
     }
 
     static (List<Category>, Dictionary<Guid, List<Category>>) SortCategories( List<Category> categories )
     {
-        List<Category> primaryCategories = categories.Where( static c => c.ParentId is null ).ToList();
+        var primaryCategories = categories.Where( static c => c.ParentId is null ).ToList();
         
         Dictionary<Guid, List<Category>> secondaryCategories = [];
         foreach ( Category c in categories ) {
             if (c.ParentId is null) {
-                if (!secondaryCategories.ContainsKey( c.Id ))
+                if (secondaryCategories.ContainsKey( c.Id ))
                     secondaryCategories.Add( c.Id, [] );
                 continue;
             }

@@ -8,11 +8,11 @@ public readonly record struct RepliesLine<T>(
         self = this;
         return !AnyFailed( out self );
     }
-    public bool AnySucceeded => Options.Any( o => o.IsSuccess );
+    public bool AnySucceeded => Options.Any( static o => o );
     public bool AnyFailed( out RepliesLine<T> self )
     {
         self = this;
-        return Options.Any( o => !o.IsSuccess );
+        return Options.Any( static o => !o );
     }
-    public List<T> ToObjects() => Options.Select( o => o.Data ).ToList();
+    public List<T> ToObjects() => Options.Select( static o => o.Data ).ToList();
 }

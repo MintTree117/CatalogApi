@@ -139,7 +139,7 @@ internal sealed class InventoryRepository
     async Task<bool> RefreshInventory()
     {
         // GET WAREHOUSE DATA
-        List<Warehouse>? warehouses = await GetWarehouseData();
+        var warehouses = await GetWarehouseData();
         if (warehouses is null)
             return false;
         
@@ -192,8 +192,8 @@ internal sealed class InventoryRepository
     async Task<List<Warehouse>?> GetWarehouseData()
     {
         const string sql = "SELECT * FROM Warehouses";
-        Replies<Warehouse> result = await _dapper.QueryAsync<Warehouse>( sql );
-        return result.IsSuccess
+        var result = await _dapper.QueryAsync<Warehouse>( sql );
+        return result
             ? result.Enumerable.ToList()
             : null;
     }

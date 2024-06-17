@@ -25,8 +25,13 @@ internal sealed class CategoryRepository // SINGLETON
 
     internal async Task<IEnumerable<Category>> GetCategories()
     {
-        if (_cachedCategories is not null && _cachedCategories.Count != 0 && DateTime.Now - _lastCacheUpdate < _cacheLifeMinutes)
-            return _cachedCategories;
+        bool validCache =
+            _cachedCategories is not null &&
+            _cachedCategories.Count != 0 &&
+            DateTime.Now - _lastCacheUpdate < _cacheLifeMinutes;
+
+        if (validCache)
+            return _cachedCategories!;
 
         return await FetchCategoriesWait()
             ? _cachedCategories ?? []
@@ -47,10 +52,10 @@ internal sealed class CategoryRepository // SINGLETON
     {
         const string sql = "SELECT * FROM CatalogApi.Categories";
         
-        Replies<Category> categories = await _dapper.QueryAsync<Category>( sql );
+        var categories = await _dapper.QueryAsync<Category>( sql );
 
-        if (!categories.IsSuccess) {
-            _logger.LogError( $"Failed to update categories cache: {categories.Message()}" );
+        if (!categories) {
+            _logger.LogError( $"Failed to update categories cache: {categories.GetMessage()}" );
             _cachedCategories = null;
             return false;
         }
