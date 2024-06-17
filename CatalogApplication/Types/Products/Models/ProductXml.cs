@@ -1,5 +1,5 @@
 namespace CatalogApplication.Types.Products.Models;
 
-internal readonly record struct ProductXml(
+internal record ProductXml(
     Guid ProductId,
     string Xml );

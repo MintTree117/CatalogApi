@@ -25,10 +25,9 @@ internal static class ProductGenerator
                 List<Category> sc = 
                     PickRandomCategories( primaryCategory, secondaryCategories, random );
                 Product p = new( 
-                    Consts.NewGuidSafe(),
+                    Guid.NewGuid(),
                     primaryCategory.Id,
                     PickBrandId( sc, brands, brandCategories, random ),
-                    PickRating( random ),
                     PickIsInStock( random ),
                     PickIsFeatured( random ),
                     PickName( primaryCategory, i ),
@@ -245,11 +244,6 @@ internal static class ProductGenerator
         }
 
         throw new Exception( "Failed to pick a BrandId for product during seeding: PickBrandId() in ProductSeeder()." );
-    }
-    static float PickRating( RandomUtility random )
-    {
-        float value = (float) random.GetRandomDouble( Consts.MaxRating );
-        return value;
     }
     static bool PickIsInStock( RandomUtility random )
     {

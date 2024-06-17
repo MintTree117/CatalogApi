@@ -1,6 +1,6 @@
 namespace CatalogApplication.Types.Categories;
 
-internal readonly record struct Category(
+internal record Category(
     Guid Id,
     Guid? ParentId,
     string Name );

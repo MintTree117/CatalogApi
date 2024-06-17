@@ -1,15 +1,14 @@
 namespace CatalogApplication.Types.Products.Dtos;
 
-internal readonly record struct DetailsDto(
+internal readonly record struct ProductDto(
     Guid ProductId,
     Guid BrandId,
     List<Guid> CategoryIds,
     string Name,
-    string Description,
     string Image,
     bool IsInStock,
     bool IsFeatured,
-    float Rating,
     decimal Price,
     decimal SalePrice,
+    string Description,
     string Xml );

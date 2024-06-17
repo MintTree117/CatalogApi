@@ -1,5 +1,5 @@
 namespace CatalogApplication.Types.Brands.Models;
 
-internal readonly record struct Brand(
+internal record Brand(
     Guid Id,
     string Name );

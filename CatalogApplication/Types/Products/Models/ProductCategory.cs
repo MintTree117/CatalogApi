@@ -1,5 +1,5 @@
 namespace CatalogApplication.Types.Products.Models;
 
-internal readonly record struct ProductCategory(
+internal record ProductCategory(
     Guid ProductId,
     Guid CategoryId );

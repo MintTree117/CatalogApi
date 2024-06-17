@@ -1,8 +1,8 @@
 using System.Data;
 using System.Text;
 using CatalogApplication.Database;
-using CatalogApplication.Types.Products.Dtos;
-using CatalogApplication.Types.Products.Models;
+using CatalogApplication.Types.Search.Dtos;
+using CatalogApplication.Types.Search.Local;
 using Dapper;
 using Microsoft.Data.SqlClient;
 
@@ -33,7 +33,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     // language=sql
     const string SearchTextJoinSql = " INNER JOIN CatalogApi.ProductXmls pt ON p.Id = pt.ProductId";
     // language=sql
-    const string ProductSql = "SELECT DISTINCT p.Id, p.BrandId, p.Name, p.Image, p.Rating, p.Price, p.SalePrice FROM CatalogApi.Products p";
+    const string ProductSql = "SELECT DISTINCT p.Id, p.BrandId, p.Name, p.Image, p.IsInStock, p.IsFeatured, p.Price, p.SalePrice FROM CatalogApi.Products p";
     // language=sql
     const string CountSql = "SELECT COUNT(*) FROM CatalogApi.Products p";
     // language=sql
@@ -44,8 +44,6 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     const string MinPriceSql = " AND (p.Price >= @minPrice OR p.SalePrice >= @minPrice)";
     // language=sql
     const string MaxPriceSql = " AND (p.Price <= @maxPrice OR p.SalePrice <= @maxPrice)";
-    // language=sql
-    const string RatingSql = " AND p.Rating >= @minimumRating";
     // language=sql
     const string StockSql = " AND p.IsInStock = @isInStock";
     // language=sql
@@ -68,7 +66,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
 
             SearchQueryReply queryReply = new(
                 await multi.ReadSingleAsync<int>(),
-                (await multi.ReadAsync<SearchDto>()).ToList() );
+                (await multi.ReadAsync<SearchItemDto>()).ToList() );
 
             return queryReply;
         }
@@ -78,14 +76,14 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         }
     }
 
-    static void BuildSqlQuery( SearchQueryRequest searchQuery, out string sql, out DynamicParameters parameters )
+    internal static void BuildSqlQuery( SearchQueryRequest request, out string sql, out DynamicParameters parameters )
     {
         // START
         StringBuilder productBuilder = new();
         StringBuilder countBuilder = new();
         DynamicParameters p = new();
-        bool hasCategories = searchQuery.CategoryIds is not null && searchQuery.CategoryIds.Count > 0;
-        bool hasSearchText = !string.IsNullOrWhiteSpace( searchQuery.SearchText );
+        bool hasCategories = request.CategoryIds is not null && request.CategoryIds.Count > 0;
+        bool hasSearchText = !string.IsNullOrWhiteSpace( request.SearchText );
         
         // CATEGORY JOIN
         if (hasCategories) {
@@ -106,63 +104,57 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         if (hasCategories) {
             productBuilder.Append( CategorySql );
             countBuilder.Append( CategorySql );
-            p.Add( "categoryIds", GetDataTable( searchQuery.CategoryIds! ) );
+            p.Add( "categoryIds", GetDataTable( request.CategoryIds! ) );
         }
         // FILTER BY SEARCH TEXT
         if (hasSearchText) {
             productBuilder.Append( SearchTextSql );
             countBuilder.Append( SearchTextSql );
-            p.Add( "searchText", searchQuery.SearchText );
+            p.Add( "searchText", request.SearchText );
         }
         
         // EARLY IF NO OTHER FILTERS
-        if (searchQuery.ProductSearchFilters is null) {
+        if (request.ProductSearchFilters is null) {
             Finish( out sql, out parameters );
             return;
         }
         
         // OTHER FILTERS
-        SearchFiltersDto filtersDto = searchQuery.ProductSearchFilters.Value;
+        SearchFilters filters = request.ProductSearchFilters.Value;
         productBuilder.Append( WhereStatementSql );
         
         // BRANDS
-        if (filtersDto.BrandIds is not null) {
+        if (filters.BrandIds is not null) {
             productBuilder.Append( BrandsSql );
             countBuilder.Append( BrandsSql );
-            p.Add( "brandIds", GetDataTable( filtersDto.BrandIds ) );
+            p.Add( "brandIds", GetDataTable( filters.BrandIds ) );
         }
         // MIN PRICE
-        if (filtersDto.MinimumPrice is not null) {
+        if (filters.MinPrice is not null) {
             productBuilder.Append( MinPriceSql );
             countBuilder.Append( MinPriceSql );
-            p.Add( "minPrice", filtersDto.MinimumPrice );
+            p.Add( "minPrice", filters.MinPrice );
         }
         // MAX PRICE
-        if (filtersDto.MaximumPrice is not null) {
+        if (filters.MaxPrice is not null) {
             productBuilder.Append( MaxPriceSql );
             countBuilder.Append( MaxPriceSql );
-            p.Add( "maxPrice", filtersDto.MaximumPrice );
-        }
-        // MIN RATING
-        if (filtersDto.MinimumRating is not null) {
-            productBuilder.Append( RatingSql );
-            countBuilder.Append( RatingSql );
-            p.Add( "minRating", filtersDto.MinimumRating );
+            p.Add( "maxPrice", filters.MaxPrice );
         }
         // IN STOCK
-        if (filtersDto.IsInStock is not null) {
+        if (filters.IsInStock is not null) {
             productBuilder.Append( StockSql );
             countBuilder.Append( StockSql );
-            p.Add( "isInStock", filtersDto.IsInStock );
+            p.Add( "isInStock", filters.IsInStock );
         }
         // IS FEATURED
-        if (filtersDto.IsFeatured is not null) {
+        if (filters.IsFeatured is not null) {
             productBuilder.Append( FeaturedSql );
             countBuilder.Append( FeaturedSql );
-            p.Add( "isFeatured", filtersDto.IsFeatured );
+            p.Add( "isFeatured", filters.IsFeatured );
         }
         // IS ON SALE
-        if (filtersDto.IsOnSale) {
+        if (filters.IsOnSale) {
             productBuilder.Append( SaleSql );
             countBuilder.Append( SaleSql );
         }
@@ -175,27 +167,27 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         void Finish( out string sql, out DynamicParameters parameters )
         {
             // language=sql
-            string OrderPaginationSql = $" ORDER BY {GetOrderType( searchQuery.Pagination.OrderBy )} OFFSET @offset ROWS FETCH NEXT @rows ONLY";
-            productBuilder.Append( OrderPaginationSql );
+            string orderPaginationSql = $" ORDER BY {GetOrderType( request.Pagination.SortBy )} OFFSET @offset ROWS FETCH NEXT @rows ONLY";
+            productBuilder.Append( orderPaginationSql );
             sql = $"{countBuilder}; {productBuilder}";
 
-            p.Add( "orderBy", searchQuery.Pagination.OrderBy );
-            p.Add( "rows", searchQuery.Pagination.Rows );
-            p.Add( "offset", searchQuery.Pagination.Offset() );
+            p.Add( "orderBy", request.Pagination.SortBy );
+            p.Add( "rows", request.Pagination.PageSize );
+            p.Add( "offset", request.Pagination.Offset() );
             parameters = p;
         }
     }
     
     static DataTable GetDataTable( List<Guid> ids )
     {
-        const string IdColumn = "Id";
+        const string idColumn = "Id";
         DataTable table = new();
 
-        table.Columns.Add( IdColumn, typeof( Guid ) );
+        table.Columns.Add( idColumn, typeof( Guid ) );
 
         foreach ( Guid i in ids ) {
             DataRow row = table.NewRow();
-            row[IdColumn] = i;
+            row[idColumn] = i;
             table.Rows.Add( row );
         }
 

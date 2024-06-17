@@ -35,9 +35,9 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
         (List<Category>, Dictionary<Guid, List<Category>>) sortedCategories = 
             SortCategories( categoriesReply.Enumerable.ToList() );
         
-        _logger.LogInformation( Consts.Divider );
+        _logger.LogInformation( "----------------------------------------------------------------------------------------------" );
         _logger.LogInformation( "SEEDED CATEGORIES" );
-        _logger.LogInformation( Consts.Divider );
+        _logger.LogInformation( "----------------------------------------------------------------------------------------------" );
         _logger.LogInformation( $"Primary Count: {sortedCategories.Item1.Count}" );
         _logger.LogInformation( $"Secondary Count: {sortedCategories.Item2.Count}" );
         
@@ -48,9 +48,9 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
         if (!brandsReply.Item2.IsSuccess)
             throw new Exception( $"Failed to seed BrandCategories during seeding: {brandsReply.Item2.Message()}" );
 
-        _logger.LogInformation( Consts.Divider );
+        _logger.LogInformation( "----------------------------------------------------------------------------------------------" );
         _logger.LogInformation( "SEEDED BRANDS" );
-        _logger.LogInformation( Consts.Divider );
+        _logger.LogInformation( "----------------------------------------------------------------------------------------------" );
         _logger.LogInformation( $"Brands Count: {brandsReply.Item1.Enumerable.Count()}" );
         _logger.LogInformation( $"BrandCategories Count: {brandsReply.Item2.Enumerable.Count()}" );
         
@@ -60,9 +60,9 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
         if (!productsReply.IsSuccess)
             throw new Exception( $"Failed to seed Products during seeding: {productsReply.Message()}" );
 
-        _logger.LogInformation( Consts.Divider );
+        _logger.LogInformation( "----------------------------------------------------------------------------------------------" );
         _logger.LogInformation( "SEEDED PRODUCTS" );
-        _logger.LogInformation( Consts.Divider );
+        _logger.LogInformation( "----------------------------------------------------------------------------------------------" );
         _logger.LogInformation( $"Products Count: {productsReply.Data.Products.Count}" );
         _logger.LogInformation( $"ProductCategories Count: {productsReply.Data.ProductCategories.Count}" );
         _logger.LogInformation( $"ProductDescriptions Count: {productsReply.Data.ProductDescriptions.Count}" );
@@ -73,6 +73,12 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
         if (!warehousesReply.IsSuccess)
             throw new Exception( $"Failed to seed Warehouses during seeding: {warehousesReply.Message()}" );
         _logger.LogInformation( "Seeded Warehouses." );
+        
+        // INVENTORIES
+        Reply<bool> inventoriesReply = await SeedInventory( productsReply.Data.Products, warehousesReply.Enumerable.ToList() );
+        if (!inventoriesReply.IsSuccess)
+            throw new Exception( $"Failed to seed Inventories during seeding: {inventoriesReply.Message()}" );
+        _logger.LogInformation( "Seeded Inventories." );
     }
 
     async Task<Replies<Category>> SeedCategories()
@@ -170,6 +176,46 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
         return reply.IsSuccess
             ? Replies<Warehouse>.With( warehouses )
             : Replies<Warehouse>.None( reply );
+    }
+    async Task<Reply<bool>> SeedInventory( List<Product> products, List<Warehouse> warehouses )
+    {
+        List<ProductInventory> inventories = InventoryGenerator.GenerateInventories( products, warehouses, _random );
+        DataTable tableParam = InventoryGenerator.GenerateInventoryTable( inventories );
+
+        DynamicParameters parameters = new();
+        parameters.Add( "ProductInventoriesTvp", tableParam.AsTableValuedParameter( "CatalogApi.ProductInventoriesTvp" ) );
+
+        Reply<bool> reply = await InsertInventories( _dapper, inventories );
+        return reply.IsSuccess
+            ? Reply<bool>.With( true )
+            : Reply<bool>.None( reply );
+    }
+
+    static async Task<Reply<bool>> InsertInventories( IDapperContext dapper, List<ProductInventory> inventories )
+    {
+        const string sql =
+            """
+            INSERT INTO CatalogApi.ProductInventories (ProductId, WarehouseId, Quantity)
+            SELECT ProductId, WarehouseId, Quantity
+            FROM @ProductInventoriesTvp
+            """;
+
+        int index = 0;
+        while ( index < inventories.Count )
+        {
+            List<ProductInventory> productsSubset = inventories.Skip( index ).Take( DatabaseInsertPageSize ).ToList();
+            DataTable tableParam = InventoryGenerator.GenerateInventoryTable( productsSubset );
+            DynamicParameters parameters = new();
+            parameters.Add( "ProductInventoriesTvp", tableParam.AsTableValuedParameter( "CatalogApi.ProductInventoriesTvp" ) );
+
+            Reply<int> result = await dapper.ExecuteAsync( sql, parameters );
+            if (!result.IsSuccess)
+                return Reply<bool>.None( result );
+
+            index += DatabaseInsertPageSize;
+        }
+
+        return Reply<bool>.With( true );
     }
     
     static async Task<Reply<bool>> InsertProducts( IDapperContext dapper, List<Product> products )
@@ -275,7 +321,7 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
 
     static (List<Category>, Dictionary<Guid, List<Category>>) SortCategories( List<Category> categories )
     {
-        List<Category> primaryCategories = categories.Where( c => c.ParentId is null ).ToList();
+        List<Category> primaryCategories = categories.Where( static c => c.ParentId is null ).ToList();
         
         Dictionary<Guid, List<Category>> secondaryCategories = [];
         foreach ( Category c in categories ) {

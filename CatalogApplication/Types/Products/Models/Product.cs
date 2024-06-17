@@ -1,10 +1,9 @@
 namespace CatalogApplication.Types.Products.Models;
 
-internal readonly record struct Product(
+internal record Product(
     Guid Id,
     Guid PrimaryCategoryId,
     Guid BrandId,
-    float Rating,
     bool IsInStock,
     bool IsFeatured,
     string Name,

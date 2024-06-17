@@ -40,7 +40,7 @@ internal sealed class ProductDetailsRepository
         _timer = new Timer( _ => Cleanup(), null, TimeSpan.Zero, _cacheLifeMinutes );
     }
 
-    internal async Task<DetailsDto?> GetDetails( Guid productId )
+    internal async Task<ProductDto?> GetDetails( Guid productId )
     {
         if (_cache.TryGetValue( productId, out CacheEntry entry ) && DateTime.Now - entry.Timestamp < _cacheLifeMinutes)
             return entry.Dto;
@@ -63,8 +63,8 @@ internal sealed class ProductDetailsRepository
             p.Add( pname, productId );
             await using SqlMapper.GridReader reader = await connection.QueryMultipleAsync( sql, p, commandType: CommandType.Text );
             IEnumerable<Guid> categories = await reader.ReadAsync<Guid>();
-            var details = await reader.ReadSingleAsync<DetailsDto>();
-            DetailsDto result = details with { CategoryIds = categories.ToList() };
+            var details = await reader.ReadSingleAsync<ProductDto>();
+            ProductDto result = details with { CategoryIds = categories.ToList() };
             CacheEntry entry = new( result, DateTime.Now );
             _cache.TryAdd( result.ProductId, entry );
             return true;
@@ -97,6 +97,6 @@ internal sealed class ProductDetailsRepository
     }
     
     readonly record struct CacheEntry(
-        DetailsDto Dto,
+        ProductDto Dto,
         DateTime Timestamp );
 }

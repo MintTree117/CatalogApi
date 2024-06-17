@@ -1,9 +1,12 @@
 using CatalogApplication.Repositories;
+using CatalogApplication.Types;
 using CatalogApplication.Types._Common.Geography;
 using CatalogApplication.Types.Brands.Dtos;
 using CatalogApplication.Types.Categories;
 using CatalogApplication.Types.Products.Dtos;
-using CatalogApplication.Types.Products.Models;
+using CatalogApplication.Types.Search.Dtos;
+using CatalogApplication.Types.Search.Local;
+using Dapper;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CatalogApplication;
@@ -12,13 +15,15 @@ internal static class Endpoints
 {
     internal static void MapEndpoints( this IEndpointRouteBuilder app )
     {
-        app.MapGet( "api/categories", async ( CategoryRepository repository ) => 
+        app.MapGet( "api/categories", static async ( CategoryRepository repository ) => 
             await GetCategories( repository ) );
-        app.MapGet( "api/brands", async ( BrandRepository repository ) =>
+        app.MapGet( "api/brands", static async ( BrandRepository repository ) =>
             await GetBrands( repository ) );
-        app.MapGet( "api/search", async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
+        app.MapGet( "api/search-query", static async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
+            await GetSearchQuery( http, products ) );
+        app.MapGet( "api/search", static async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
             await GetSearch( http, products, inventory ) );
-        app.MapGet( "api/details", async ( [FromQuery] Guid productId, ProductDetailsRepository repository ) =>
+        app.MapGet( "api/details", static async ( [FromQuery] Guid productId, ProductDetailsRepository repository ) =>
             await GetDetails( productId, repository ) );
     }
 
@@ -36,31 +41,32 @@ internal static class Endpoints
             ? Results.Ok( result )
             : Results.NotFound();
     }
-    static async Task<IResult> GetSearch( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
+    static async Task<IResult> GetSearchQuery( HttpContext http, ProductSearchRepository products)
     {
+        await Task.Delay( 1000 );
+        
         IQueryCollection query = http.Request.Query;
 
         // Parse Pagination
-        int? page = ParseInt( query["Pagination.Page"] );
-        int? rows = ParseInt( query["Pagination.Rows"] );
-        string orderBy = query["Pagination.OrderBy"].ToString();
+        int? page = ParseInt( query["Page"] );
+        int? rows = ParseInt( query["PageSize"] );
+        string orderBy = query["OrderBy"].ToString();
 
         Pagination pagination = new( page ?? 0, rows ?? 10, orderBy );
 
         // Parse SearchFiltersDto
-        SearchFiltersDto productSearchFilters = new(
-            ParseGuidList( query["ProductSearchFilters.BrandIds"] ),
-            ParseInt( query["ProductSearchFilters.MinimumPrice"] ),
-            ParseInt( query["ProductSearchFilters.MaximumPrice"] ),
-            ParseInt( query["ProductSearchFilters.MinimumRating"] ),
-            ParseBool( query["ProductSearchFilters.IsInStock"] ),
-            ParseBool( query["ProductSearchFilters.IsFeatured"] ),
-            ParseBool( query["ProductSearchFilters.IsOnSale"] ) ?? false
+        SearchFilters productSearchFilters = new(
+            ParseGuidList( query["BrandIds"] ),
+            ParseInt( query["MinPrice"] ),
+            ParseInt( query["MaxPrice"] ),
+            ParseBool( query["IsInStock"] ),
+            ParseBool( query["IsFeatured"] ),
+            ParseBool( query["IsOnSale"] ) ?? false
         );
 
         // Parse CategoryIds
         List<Guid>? categoryIds = ParseGuidList( query["CategoryIds"] );
-        
+
         // Parse SearchText
         string? searchText = query["SearchText"];
 
@@ -75,18 +81,67 @@ internal static class Endpoints
             productSearchFilters,
             pagination
         );
+
+        ProductSearchRepository.BuildSqlQuery( queryRequest, out string sql, out DynamicParameters parameters );
+        Console.WriteLine( "########################" );
+        Console.WriteLine( sql );
+
+        return Results.Ok( sql );
+    }
+    static async Task<IResult> GetSearch( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
+    {
+        IQueryCollection query = http.Request.Query;
+
+        // CATEGORIES
+        List<Guid>? categoryIds = ParseGuidList( query["CategoryIds"] );
+
+        // SEARCH TEXT
+        string? searchText = query["SearchText"];
         
+        // FILTERS
+        SearchFilters productSearchFilters = new(
+            ParseGuidList( query["BrandIds"] ),
+            ParseInt( query["MinPrice"] ),
+            ParseInt( query["MaxPrice"] ),
+            ParseBool( query["IsInStock"] ),
+            ParseBool( query["IsFeatured"] ),
+            ParseBool( query["IsOnSale"] ) ?? false
+        );
+
+        // ADDRESS
+        int? x = ParseInt( query["PosX"] );
+        int? y = ParseInt( query["PosY"] );
+        AddressDto? deliveryAddress = x is null || y is null ? null : new AddressDto( x.Value, y.Value );
+
+        // PAGINATION
+        int? page = ParseInt( query["Page"] );
+        int? rows = ParseInt( query["PageSize"] );
+        string orderBy = query["SortBy"].ToString();
+        Pagination pagination = new( page ?? 0, rows ?? 10, orderBy );
+        
+        // LOCAL MODEL
+        SearchQueryRequest queryRequest = new(
+            searchText,
+            categoryIds?.Count > 0 ? categoryIds : null,
+            productSearchFilters,
+            pagination
+        );
+        
+        // SEARCH
         SearchQueryReply? searchReply = await products.GetSearch( queryRequest );
         if (searchReply is null)
             return Results.NotFound();
-
+        
+        // SHIPPING
         List<int> estimatesReply = await inventory.GetDeliveryEstimates( searchReply.Value.Results, deliveryAddress );
-        SearchReply reply = new( searchReply.Value.TotalMatches, searchReply.Value.Results, estimatesReply );
-        return Results.Ok( reply );
+        
+        // FINISH
+        SearchResultDto resultDto = new( searchReply.Value.TotalMatches, searchReply.Value.Results, estimatesReply );
+        return Results.Ok( resultDto );
     }
     static async Task<IResult> GetDetails( Guid productId, ProductDetailsRepository repository )
     {
-        DetailsDto? result = await repository.GetDetails( productId );
+        ProductDto? result = await repository.GetDetails( productId );
         return result is not null
             ? Results.Ok( result )
             : Results.NotFound();
@@ -97,7 +152,7 @@ internal static class Endpoints
         if (string.IsNullOrEmpty( value ))
             return null;
 
-        IEnumerable<Guid> guids = value.Split( ',' ).Select( x => Guid.TryParse( x, out Guid guid ) ? guid : Guid.Empty );
+        IEnumerable<Guid> guids = value.Split( ',' ).Select( static x => Guid.TryParse( x, out Guid guid ) ? guid : Guid.Empty );
         return guids.ToList();
     }
     static int? ParseInt( string? value )

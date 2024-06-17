@@ -1,6 +1,6 @@
 namespace CatalogApplication.Types.Products.Models;
 
-internal readonly record struct ProductSeedingModel(
+internal record ProductSeedingModel(
     List<Product> Products,
     List<ProductCategory> ProductCategories,
     List<ProductDescription> ProductDescriptions,
