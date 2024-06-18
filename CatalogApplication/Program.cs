@@ -13,9 +13,15 @@ EndpointLogger.Logger = builder.Services
     .BuildServiceProvider()
     .GetRequiredService<ILoggerFactory>()
     .CreateLogger<EndpointLogger>();
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddCors( static options => {
+    options.AddDefaultPolicy( static cors => cors
+        .WithOrigins( "https://localhost:7221", "https://localhost:7212" )
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials() );
+} );
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IDapperContext, DapperContext>();
 builder.Services.AddSingleton<BrandRepository>();
@@ -34,7 +40,7 @@ if (app.Environment.IsDevelopment()) {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+app.UseCors();
 app.MapEndpoints();
 app.UseHttpsRedirection();
 

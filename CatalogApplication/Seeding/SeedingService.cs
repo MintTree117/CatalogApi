@@ -21,6 +21,7 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
 
     internal async Task SeedDatabase()
     {
+        return;
         // CLEAR CATALOG
         var clearReply = await _dapper.ExecuteStoredProcedure( "CatalogApi.ClearCatalog" );
         if (!clearReply)
@@ -326,7 +327,7 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
         Dictionary<Guid, List<Category>> secondaryCategories = [];
         foreach ( Category c in categories ) {
             if (c.ParentId is null) {
-                if (secondaryCategories.ContainsKey( c.Id ))
+                if (!secondaryCategories.ContainsKey( c.Id ))
                     secondaryCategories.Add( c.Id, [] );
                 continue;
             }

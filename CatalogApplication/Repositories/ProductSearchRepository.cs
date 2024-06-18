@@ -14,21 +14,6 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     readonly IDapperContext _dapper = dapper;
 
     // language=sql
-    const string CategorySql =
-        """
-        WITH ProductCategoryFilter AS (
-            SELECT DISTINCT ProductId
-            FROM CatalogApi.ProductCategories
-            WHERE CategoryId IN (SELECT Id FROM @categoryIds)
-        ),
-        """;
-    // language=sql
-    const string SearchTextSql =
-        """
-        WHERE p.Name LIKE '%' + @searchText + '%'
-        OR pt.Name LIKE '%' + @searchText + '%';
-        """;
-    // language=sql
     const string CategoryJoinSql = " INNER JOIN CatalogApi.ProductCategories pc ON p.Id = pc.ProductId";
     // language=sql
     const string SearchTextJoinSql = " INNER JOIN CatalogApi.ProductXmls pt ON p.Id = pt.ProductId";
@@ -39,20 +24,26 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     // language=sql
     const string WhereStatementSql = " WHERE 1=1";
     // language=sql
+    const string CategorySql = " AND pc.CategoryId = @categoryId";
+    // language=sql
+    const string SearchTextSql = " AND p.Name LIKE '%' + @searchText + '%' OR pt.Name LIKE '%' + @searchText + '%';";
+    // language=sql
     const string BrandsSql = " AND p.BrandId IN (SELECT Id FROM @brandIds)";
     // language=sql
     const string MinPriceSql = " AND (p.Price >= @minPrice OR p.SalePrice >= @minPrice)";
     // language=sql
-    const string MaxPriceSql = " AND (p.Price <= @maxPrice OR p.SalePrice <= @maxPrice)";
+    const string MaxPriceSql = " AND (p.Price <= @maxPrice OR (p.SalePrice > 0 AND p.SalePrice <= @maxPrice))";
     // language=sql
-    const string StockSql = " AND p.IsInStock = @isInStock";
+    const string StockSql = " AND p.IsInStock = 1";
     // language=sql
-    const string FeaturedSql = " AND p.IsFeatured = @isFeatured";
+    const string FeaturedSql = " AND p.IsFeatured = 1";
     // language=sql
     const string SaleSql = " AND p.SalePrice >= 0";
 
-    internal async Task<SearchQueryReply?> GetSearch( SearchQueryRequest queryRequest )
+    internal async Task<SearchQueryReply?> GetSearch( SearchFilters filters )
     {
+        LogInformation( $"{filters.CategoryId} {filters.Page} {filters.IsInStock}" );
+        
         try {
             await using SqlConnection connection = await _dapper.GetOpenConnection();
 
@@ -61,7 +52,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
                 return null;
             }
 
-            BuildSqlQuery( queryRequest, out string sql, out DynamicParameters parameters );
+            BuildSqlQuery( filters, out string sql, out DynamicParameters parameters );
             await using SqlMapper.GridReader multi = await connection.QueryMultipleAsync( sql, parameters, commandType: CommandType.Text );
 
             SearchQueryReply queryReply = new(
@@ -75,18 +66,21 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             return null;
         }
     }
-
-    internal static void BuildSqlQuery( SearchQueryRequest request, out string sql, out DynamicParameters parameters )
+    internal void BuildSqlQuery( SearchFilters filters, out string sql, out DynamicParameters parameters )
     {
         // START
         StringBuilder productBuilder = new();
         StringBuilder countBuilder = new();
         DynamicParameters p = new();
-        bool hasCategories = request.CategoryIds is not null && request.CategoryIds.Count > 0;
-        bool hasSearchText = !string.IsNullOrWhiteSpace( request.SearchText );
+        bool hasCategory = filters.CategoryId is not null;
+        bool hasSearchText = !string.IsNullOrWhiteSpace( filters.SearchText );
+
+        // MAIN SELECT
+        productBuilder.Append( ProductSql );
+        countBuilder.Append( CountSql );
         
         // CATEGORY JOIN
-        if (hasCategories) {
+        if (hasCategory) {
             productBuilder.Append( CategoryJoinSql );
             countBuilder.Append( CategoryJoinSql );
         }
@@ -96,38 +90,28 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             countBuilder.Append( SearchTextJoinSql );
         }
         
-        // MAIN SELECT
-        productBuilder.Append( ProductSql );
-        countBuilder.Append( CountSql );
+        // DEFAULT WHERE CLAUSE
+        productBuilder.Append( WhereStatementSql );
+        countBuilder.Append( WhereStatementSql );
         
         // FILTER BY CATEGORY
-        if (hasCategories) {
+        if (hasCategory) {
             productBuilder.Append( CategorySql );
             countBuilder.Append( CategorySql );
-            p.Add( "categoryIds", GetDataTable( request.CategoryIds! ) );
+            p.Add( "CategoryId", filters.CategoryId );
         }
         // FILTER BY SEARCH TEXT
         if (hasSearchText) {
             productBuilder.Append( SearchTextSql );
             countBuilder.Append( SearchTextSql );
-            p.Add( "searchText", request.SearchText );
+            p.Add( "searchText", filters.SearchText );
         }
-        
-        // EARLY IF NO OTHER FILTERS
-        if (request.ProductSearchFilters is null) {
-            Finish( out sql, out parameters );
-            return;
-        }
-        
-        // OTHER FILTERS
-        SearchFilters filters = request.ProductSearchFilters.Value;
-        productBuilder.Append( WhereStatementSql );
-        
+
         // BRANDS
         if (filters.BrandIds is not null) {
             productBuilder.Append( BrandsSql );
             countBuilder.Append( BrandsSql );
-            p.Add( "brandIds", GetDataTable( filters.BrandIds ) );
+            p.Add( "brandIds", GetDataTable( filters.BrandIds ).AsTableValuedParameter( "CatalogApi.BrandIdsTvp" ) );
         }
         // MIN PRICE
         if (filters.MinPrice is not null) {
@@ -159,22 +143,27 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             countBuilder.Append( SaleSql );
         }
         
-        // PAGINATION
-        Finish( out sql, out parameters );
-        return;
-        
-        // UTIL METHOD
-        void Finish( out string sql, out DynamicParameters parameters )
-        {
-            // language=sql
-            string orderPaginationSql = $" ORDER BY {GetOrderType( request.Pagination.SortBy )} OFFSET @offset ROWS FETCH NEXT @rows ONLY";
-            productBuilder.Append( orderPaginationSql );
-            sql = $"{countBuilder}; {productBuilder}";
+        // language=sql
+        string orderPaginationSql = $" ORDER BY {GetOrderType( filters.SortBy )} OFFSET @offset ROWS FETCH NEXT @rows ROWS ONLY";
+        productBuilder.Append( orderPaginationSql );
+        sql = $"{countBuilder}; {productBuilder};";
 
-            p.Add( "orderBy", request.Pagination.SortBy );
-            p.Add( "rows", request.Pagination.PageSize );
-            p.Add( "offset", request.Pagination.Offset() );
-            parameters = p;
+        p.Add( "orderBy", filters.SortBy );
+        p.Add( "rows", filters.PageSize );
+        p.Add( "offset", Math.Max( 0, filters.Page ) * filters.PageSize );
+        parameters = p;
+        Logger.LogInformation( sql );
+        return;
+
+        static string GetOrderType( int t )
+        {
+            return (OrderType) t switch {
+                OrderType.PriceLow => "p.Price ASC",
+                OrderType.OnSale => "p.IsOnSale DESC",
+                OrderType.Rating => "p.Rating DESC",
+                OrderType.PriceHigh => "p.Price DESC",
+                _ => "p.Price ASC"
+            };
         }
     }
     
@@ -192,20 +181,6 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         }
 
         return table;
-    }
-    static string GetOrderType( string typeString )
-    {
-        if (!Enum.TryParse( typeString, true, out OrderType type ))
-            return "IsFeatured ASC";
-
-        return type switch {
-            OrderType.Featured => "IsFeatured DESC, IsFeatured ASC",
-            OrderType.OnSale => "IsOnSale DESC, IsOnSale ASC",
-            OrderType.Rating => "Rating DESC",
-            OrderType.PriceLow => "Price ASC",
-            OrderType.PriceHigh => "Price DESC",
-            _ => "IsFeatured ASC"
-        };
     }
     
     enum OrderType
