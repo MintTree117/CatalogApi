@@ -5,6 +5,7 @@ internal static class ProductSeedData
     internal const double MaxPrice = 10000;
     internal const double MaxRating = 5;
     internal const int ImagesPerCategory = 5;
+    internal const string TestImage = "/images/test.jpeg";
     internal static readonly Dictionary<string, string> ProductNamesByPrimaryCategory = new() {
         { CategorySeedData.PrimaryCategories[0], "Computer" },
         { CategorySeedData.PrimaryCategories[1], "Smartphone" },

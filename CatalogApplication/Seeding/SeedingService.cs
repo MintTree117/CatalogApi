@@ -1,4 +1,3 @@
-using System.Data;
 using CatalogApplication.Database;
 using CatalogApplication.Seeding.Generators;
 using CatalogApplication.Types._Common.ReplyTypes;
@@ -21,7 +20,6 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
 
     internal async Task SeedDatabase()
     {
-        return;
         // CLEAR CATALOG
         var clearReply = await _dapper.ExecuteStoredProcedure( "CatalogApi.ClearCatalog" );
         if (!clearReply)
@@ -143,7 +141,11 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
 
         var productsReply = await InsertProducts( _dapper, seed.Products );
         if (!productsReply)
+        {
+            _logger.LogError( $"jjFailed to generate products {productsReply.GetMessage()}" );
             return Reply<ProductSeedingModel>.Failure( productsReply );
+        }
+
 
         var productCategoriesReply = await InsertProductCategories( _dapper, seed.ProductCategories );
         if (!productCategoriesReply)
@@ -218,8 +220,7 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
 
         return Reply<bool>.Success( true );
     }
-    
-    static async Task<Reply<bool>> InsertProducts( IDapperContext dapper, List<Product> products )
+    async Task<Reply<bool>> InsertProducts( IDapperContext dapper, List<Product> products )
     {
         const string sql =
             """
@@ -229,15 +230,19 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
             """;
         
         int index = 0;
-        List<Product> productsSubset = products.Skip( index ).Take( DatabaseInsertPageSize ).ToList();
-        while ( index < products.Count ) {
+        while ( index < products.Count )
+        {
+            var productsSubset = products.Skip( index ).Take( DatabaseInsertPageSize ).ToList();
             using var tableParam = ProductGenerator.GenerateProductsTable( productsSubset );
             var parameters = new DynamicParameters();
             parameters.Add( "ProductsTvp", tableParam.AsTableValuedParameter( "CatalogApi.ProductsTvp" ) );
 
             var result = await dapper.ExecuteAsync( sql, parameters );
             if (!result)
+            {
+                _logger.LogError( $"Error during insert products {result.GetMessage()}" );
                 return Reply<bool>.Failure( result );
+            }
 
             index += DatabaseInsertPageSize;
         }

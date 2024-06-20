@@ -80,18 +80,35 @@ internal sealed class DapperContext : IDapperContext
         if (c.State != ConnectionState.Open)
             return Reply<int>.ServerError( InvalidConnectionMessage + c.State );
 
-        try 
+        SqlTransaction? transaction = null;
+
+        try
         {
-            int result = await c.ExecuteAsync( sql, parameters, commandType: CommandType.Text );
-            return result > 0
-                ? Reply<int>.Success( result )
-                : Reply<int>.ServerError( "No rows altered." );
+            transaction = c.BeginTransaction();
+
+            int result = await c.ExecuteAsync( sql, parameters, transaction, commandType: CommandType.Text );
+
+            if (result > 0)
+            {
+                await transaction.CommitAsync();
+                return Reply<int>.Success( result );
+            }
+            else
+            {
+                await transaction.RollbackAsync();
+                return Reply<int>.ServerError( "No rows altered." );
+            }
         }
-        catch ( Exception e ) 
+        catch ( Exception e )
         {
-            return Reply<int>.ServerError( ExceptionMessage );
+            if (transaction != null)
+            {
+                await transaction.RollbackAsync();
+            }
+            return Reply<int>.ServerError( e.Message );
         }
     }
+
     public async Task<Reply<int>> ExecuteStoredProcedure( string procedureName, DynamicParameters? parameters = null )
     {
         await using SqlConnection c = await GetOpenConnection();

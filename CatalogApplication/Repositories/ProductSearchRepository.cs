@@ -12,7 +12,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     : BaseRepository<ProductSearchRepository>( logger )
 {
     readonly IDapperContext _dapper = dapper;
-
+    
     // language=sql
     const string CategoryJoinSql = " INNER JOIN CatalogApi.ProductCategories pc ON p.Id = pc.ProductId";
     // language=sql
@@ -150,7 +150,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
 
         p.Add( "orderBy", filters.SortBy );
         p.Add( "rows", filters.PageSize );
-        p.Add( "offset", Math.Max( 0, filters.Page ) * filters.PageSize );
+        p.Add( "offset", Math.Max( 0, filters.Page - 1 ) * filters.PageSize );
         parameters = p;
         Logger.LogInformation( sql );
         return;

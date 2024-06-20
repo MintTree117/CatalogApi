@@ -10,7 +10,7 @@ namespace CatalogApplication.Seeding.Generators;
 internal static class ProductGenerator
 {
     const int LoopSafety = 1000;
-    const int ProductsPerPrimaryCategory = 3;
+    const int ProductsPerPrimaryCategory = 20;
 
     internal static ProductSeedingModel GenerateProducts( List<Category> primaryCategories, Dictionary<Guid, List<Category>> secondaryCategories, List<Brand> brands, List<BrandCategory> brandCategories, RandomUtility random )
     {
@@ -263,6 +263,7 @@ internal static class ProductGenerator
     }
     static string PickImage( Category primaryCategory, RandomUtility random )
     {
+        return ProductSeedData.TestImage;
         int i = random.GetRandomInt( ProductSeedData.ImagesPerCategory - 1 );
         string image = $"{primaryCategory.Name}/{i}.png";
         return image;

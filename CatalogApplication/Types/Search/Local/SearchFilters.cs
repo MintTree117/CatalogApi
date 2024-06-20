@@ -11,4 +11,6 @@ internal readonly record struct SearchFilters(
     bool IsOnSale,
     int Page,
     int PageSize,
-    int SortBy );
+    int SortBy,
+    int? PosX,
+    int? PosY );
