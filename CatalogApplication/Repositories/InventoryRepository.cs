@@ -1,5 +1,6 @@
 using CatalogApplication.Database;
 using CatalogApplication.Types._Common.Geography;
+using CatalogApplication.Types.Products.Models;
 using CatalogApplication.Types.Search.Dtos;
 using CatalogApplication.Types.Stock;
 
@@ -19,33 +20,25 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
         { 16000, 30 },
     };
     const int DefaultDays = 30;
-    const int GridCellLength = 1000000;
-    const int SpatialCellSize = 50000;
+    const int MaxWarehouseCheckRadius = 16000;
 
     Timer _cacheTimer;
-    
-    // In-Memory Cache
-    Dictionary<int,
-        Dictionary<Cell,
-            Dictionary<Guid, int>>> _stockByWarehouseBySpatialRegionIndex = [];
-
-    readonly record struct StockDto(
-        Guid ItemId,
-        int Quantity );
+    List<Warehouse> _warehouses = [];
+    Dictionary<Warehouse, Dictionary<Guid, int>> _inventories = [];
     
     // CONSTRUCTOR
     public InventoryRepository( IServiceProvider provider, IDapperContext dapper, ILogger<InventoryRepository> logger ) : base( logger )
     {
         _provider = provider;
         _dapper = dapper;
-        _cacheTimer = new Timer( _ => OnCacheTimer(), null, TimeSpan.Zero, _cacheLifetime );
+        _cacheTimer = new Timer( _ => OnCacheTimer(), null, TimeSpan.FromMinutes( 5 ), _cacheLifetime );
 
         async void OnCacheTimer()
         {
             if (await RefreshInventory())
-                LogInformation( "Refreshed inventory repository" );
+                LogInformation( "Refreshed inventory repository." );
             else
-                LogError( "Failed to refresh inventory repository" );
+                LogError( "Failed to refresh inventory repository." );
         }
     }
     
@@ -54,82 +47,71 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
     {
         if (deliveryAddress is null)
             return GetDefaultDays( items.Count );
+
+        if (_warehouses.Count <= 0)
+        {
+            LogError( "no count" );
+            await RefreshInventory();
+        }
         
         try
         {
             return await CalculateEstimates( items, deliveryAddress.Value );
         }
         catch ( Exception e ) {
-            LogException( e, $"An error occured while executing GetDeliveryEstimateDays() : {e.Message}" );
-            return [];
+            LogException( e, "An error occured while executing GetDeliveryEstimateDays()." );
+            return GetDefaultDays( items.Count );
         }
     }
     async Task<List<int>> CalculateEstimates( List<SearchItemDto> items, AddressDto deliveryAddress )
     {
         return await Task.Run( () => {
             List<int> estimates = [];
-            List<int> cellsToCheck = CalculateCellsToCheck( deliveryAddress.PosX, deliveryAddress.PosY, 16000 );
-            foreach ( SearchItemDto dto in items )
-            {
-                var cell = new Cell( deliveryAddress.PosX, deliveryAddress.PosY );
-                var estimate = GetEstimateDays( dto.ProductId, cell, cellsToCheck );
-                estimates.Add( estimate );
-            }
+            List<Warehouse> warehousesToCheck = [];
+
+            foreach ( Warehouse w in _warehouses )
+                if (CalculateDistance( deliveryAddress.PosX, deliveryAddress.PosY, w.PosX, w.PosY ) < MaxWarehouseCheckRadius)
+                    warehousesToCheck.Add( w );
+            
+            foreach ( SearchItemDto i in items )
+                estimates.Add( GetEstimateDays( i.Id, deliveryAddress, warehousesToCheck ) );
+            
             return estimates;
         } );
     }
-    int GetEstimateDays( Guid itemId, Cell destination, List<int> cellsToCheck )
+    int GetEstimateDays( Guid itemId, AddressDto address, List<Warehouse> warehouses )
     {
         double nearestDistance = double.MaxValue;
-        foreach ( int cell in cellsToCheck ) {
-            var locationsToCheck = _stockByWarehouseBySpatialRegionIndex[cell];
-            foreach ( var kvp in locationsToCheck ) {
-                Cell locationCell = kvp.Key;
-                var entries = kvp.Value;
-                if (!entries.TryGetValue( itemId, out int quantity ) || quantity <= 0)
-                    continue;
-                double distance = GetDistance( locationCell, destination );
-                if (!(distance < nearestDistance))
-                    continue;
-                nearestDistance = distance;
+        foreach ( Warehouse w in warehouses )
+        {
+            if (!_inventories.TryGetValue( w, out var inventory ))
+                continue;
 
-                KeyValuePair<int, int> first = ShippingDistanceDays.First();
-                if (nearestDistance < first.Key)
-                    return first.Value;
-            }
+            if (!inventory.TryGetValue( itemId, out int quantity ) || quantity <= 0)
+                continue;
+
+            double distance = CalculateDistance( address.PosX, address.PosY, w.PosX, w.PosY );
+            if (!(distance < nearestDistance))
+                continue;
+            nearestDistance = distance;
         }
-
+        
         int days = DefaultDays;
-        foreach ( var kvp in ShippingDistanceDays )
+        foreach ( var kvp in ShippingDistanceDays.Reverse() )
             if (nearestDistance < kvp.Key)
                 days = kvp.Value;
         return days;
     }
-    static List<int> CalculateCellsToCheck( int startX, int startY, int radius )
-    {
-        int startMetaCellX = startX / SpatialCellSize;
-        int startMetaCellY = startY / SpatialCellSize;
-
-        List<int> spatialCells = [];
-        for ( int dx = -radius; dx <= radius; dx++ ) {
-            for ( int dy = -radius; dy <= radius; dy++ ) {
-                int metaCellX = startMetaCellX + dx;
-                int metaCellY = startMetaCellY + dy;
-                spatialCells.Add( CalculateCell( metaCellX, metaCellY ) );
-            }
-        }
-        return spatialCells;
-    }
-    static int CalculateCell( int posX, int posY ) =>
-        (posX / SpatialCellSize) + (posY / SpatialCellSize) * (GridCellLength / SpatialCellSize);
-    static double GetDistance( Cell a, Cell b ) =>
-        Math.Sqrt( Math.Pow( a.X - b.X, 2 ) + Math.Pow( a.Y - b.Y, 2 ) );
     static List<int> GetDefaultDays( int count )
     {
         List<int> defaults = [];
         for ( int i = 0; i < count; i++ )
             defaults.Add( DefaultDays );
         return defaults;
+    }
+    static double CalculateDistance( int x1, int y1, int x2, int y2 )
+    {
+        return Math.Sqrt( Math.Pow( x2 - x1, 2 ) + Math.Pow( y2 - y1, 2 ) );
     }
     
     // REFRESH CACHE
@@ -140,56 +122,49 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
         if (warehouses is null)
             return false;
         
-        // Dictionary(Region,Dictionary(Location,Stock))
-        Dictionary<int, Dictionary<Cell, Dictionary<Guid, int>>> newCache = [];
-        using HttpClient http = GetHttpClient();
+        Dictionary<Warehouse, Dictionary<Guid, int>> newCache = [];
+        foreach ( Warehouse w in warehouses )
+            newCache.TryAdd( w, [] );
+
+
+        var inventories = await GetInventoryData();
+        if (inventories is null)
+            return false;
         
-        // CHECK EACH WAREHOUSE...
-        foreach ( Warehouse w in warehouses ) 
+        foreach ( var inv in inventories )
         {
-            Cell warehouseCell = new( w.PosX, w.PosY );
-            int cell = CalculateCell( w.PosX, w.PosY );
-            
-            if (!newCache.TryGetValue( cell, out var locations )) 
+            Warehouse? warehouse = warehouses.FirstOrDefault( w => w.Id == inv.WarehouseId );
+            if (warehouse is null)
+                continue;
+
+            if (!newCache.TryGetValue( warehouse, out Dictionary<Guid, int>? inventory ))
             {
-                locations = new Dictionary<Cell, Dictionary<Guid, int>>();
-                newCache.Add( cell, locations );
+                inventory = [];
+                newCache.Add( warehouse, inventory );
             }
-            if (!locations.TryGetValue( warehouseCell, out var warehouseInventory )) 
-            {
-                warehouseInventory = new Dictionary<Guid, int>();
-                locations.Add( warehouseCell, warehouseInventory );
-            }
-            
-            // PAGINATE THE ITEM STOCK INFO AS IT MAY BE HUGE
-            const int pageSize = 100;
-            int page = 1;
-            bool hasMoreData;
-            do
-            {
-                string url = $"{w.QueryUrl}?page={page}&pageSize={pageSize}";
-                List<StockDto>? queryResult = await http.GetFromJsonAsync<List<StockDto>>( url );
-
-                if (queryResult is null || queryResult.Count == 0)
-                    break;
-
-                foreach ( StockDto s in queryResult )
-                    warehouseInventory.TryAdd( s.ItemId, s.Quantity );
-
-                hasMoreData = queryResult.Count == pageSize;
-                page++;
-            } while ( hasMoreData );
+            inventory.Add( inv.ProductId, inv.Quantity );
         }
         
         // SET CACHE
         lock ( _cacheLock )
-            _stockByWarehouseBySpatialRegionIndex = newCache;
+        {
+            _warehouses = warehouses;
+            _inventories = newCache;
+        }
         return true;
     }
     async Task<List<Warehouse>?> GetWarehouseData()
     {
-        const string sql = "SELECT * FROM Warehouses";
+        const string sql = "SELECT * FROM CatalogApi.Warehouses";
         var result = await _dapper.QueryAsync<Warehouse>( sql );
+        return result
+            ? result.Enumerable.ToList()
+            : null;
+    }
+    async Task<List<ProductInventory>?> GetInventoryData()
+    {
+        const string sql = "SELECT * FROM CatalogApi.ProductInventories";
+        var result = await _dapper.QueryAsync<ProductInventory>( sql );
         return result
             ? result.Enumerable.ToList()
             : null;
@@ -202,4 +177,35 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
             .CreateClient() 
             ?? throw new Exception( "Failed to create HttpClient." );
     }
+    readonly record struct StockDto(
+        Guid ItemId,
+        int Quantity );
 }
+
+/*using HttpClient http = GetHttpClient();
+
+// CHECK EACH WAREHOUSE...
+foreach ( Warehouse w in warehouses )
+{
+    Dictionary<Guid, int> inv = [];
+    // PAGINATE THE ITEM STOCK INFO AS IT MAY BE HUGE
+    const int pageSize = 100;
+    int page = 1;
+    bool hasMoreData;
+    do
+    {
+        string url = $"{w.QueryUrl}?page={page}&pageSize={pageSize}";
+        List<StockDto>? queryResult = await http.GetFromJsonAsync<List<StockDto>>( url );
+
+        if (queryResult is null || queryResult.Count == 0)
+            break;
+
+        foreach ( StockDto s in queryResult )
+            inv.TryAdd( s.ItemId, s.Quantity );
+
+        hasMoreData = queryResult.Count == pageSize;
+        page++;
+    } while ( hasMoreData );
+
+    newCache.TryAdd( w, inv );
+}*/
