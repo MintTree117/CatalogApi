@@ -6,7 +6,6 @@ namespace CatalogApplication.Repositories;
 internal sealed class CategoryRepository : BaseRepository<CategoryRepository>
 {
     readonly IDapperContext _dapper;
-    readonly ILogger<CategoryRepository> _logger;
     readonly TimeSpan _cacheLifeMinutes = TimeSpan.FromMinutes( 10 );
     readonly object _cacheLock = new();
 
@@ -18,7 +17,6 @@ internal sealed class CategoryRepository : BaseRepository<CategoryRepository>
     public CategoryRepository( IDapperContext dapper, ILogger<CategoryRepository> logger ) : base(logger)
     {
         _dapper = dapper;
-        _logger = logger;
         _timer = new Timer( _ => Update(), null, TimeSpan.Zero, _cacheLifeMinutes );
 
         async void Update()

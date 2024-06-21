@@ -14,22 +14,20 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
     
     Timer _timer;
     Dictionary<Guid, CacheEntry> _cache = [];
-
-    // language=sql
-    const string pname = "productId";
+    
     // language=sql
     const string sql =
         """
-        SELECT Id FROM CatalogApi.Categories
-                  WHERE ProductId = {productId};
+        SELECT CategoryId FROM CatalogApi.ProductCategories
+                  WHERE ProductId = @productId;
         SELECT
-            p.Id, p.BrandId, p.PriceRangeId, p.RatingLevelId, p.ShippingTimespan, p.Name, p.Image, p.Price, p.SalePrice,
+            p.Id, p.BrandId, p.Name, p.Image, p.IsFeatured, p.Price, p.SalePrice, p.NumberSold, p.NumberRatings, p.Rating,
             pd.Description,
             px.Xml
         FROM CatalogApi.Products p
             INNER JOIN CatalogApi.ProductDescriptions pd ON p.Id = pd.ProductId
-            INNER JOIN CatalogApi.ProductXml px ON p.Id = px.ProductId
-            WHERE pd.Id = {productId};
+            INNER JOIN CatalogApi.ProductXmls px ON p.Id = px.ProductId
+            WHERE p.Id = @productId;
         """;
     
     public ProductDetailsRepository( IDapperContext dapper, ILogger<ProductDetailsRepository> logger ) : base( logger )
@@ -41,10 +39,12 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
     internal async Task<ProductDto?> GetDetails( Guid productId )
     {
         if (_cache.TryGetValue( productId, out CacheEntry entry ) && DateTime.Now - entry.Timestamp < _cacheLifeMinutes)
-            return entry.Dto;
-        
-        return await FetchDetails( productId )
-            ? _cache[productId].Dto
+            return entry.Dto; 
+
+        await FetchDetails( productId );
+        bool has = _cache.TryGetValue( productId, out entry );
+        return has
+            ? entry.Dto
             : null;
     }
     async Task<bool> FetchDetails( Guid productId )
@@ -58,13 +58,13 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
             }
 
             DynamicParameters p = new();
-            p.Add( pname, productId );
+            p.Add( "productId", productId );
             await using SqlMapper.GridReader reader = await connection.QueryMultipleAsync( sql, p, commandType: CommandType.Text );
             IEnumerable<Guid> categories = await reader.ReadAsync<Guid>();
             var details = await reader.ReadSingleAsync<ProductDto>();
-            ProductDto result = details with { CategoryIds = categories.ToList() };
+            ProductDto result = details with { Id = productId, CategoryIds = categories.ToList() };
             CacheEntry entry = new( result, DateTime.Now );
-            _cache.TryAdd( result.ProductId, entry );
+            _cache.TryAdd( result.Id, entry );
             return true;
         }
         catch ( Exception e ) {

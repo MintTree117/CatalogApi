@@ -19,7 +19,7 @@ internal static class Endpoints
             await GetBrands( repository ) );
         app.MapGet( "api/search", static async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
             await GetSearch( http, products, inventory ) );
-        app.MapGet( "api/details", static async ( [FromQuery] Guid productId, ProductDetailsRepository repository ) =>
+        app.MapGet( "api/details", static async ( [FromQuery] string productId, ProductDetailsRepository repository ) =>
             await GetDetails( productId, repository ) );
     }
     
@@ -71,9 +71,11 @@ internal static class Endpoints
         SearchResultsDto resultsDto = new( searchReply.Value.TotalMatches, searchReply.Value.Results, estimatesReply );
         return Results.Ok( resultsDto );
     }
-    static async Task<IResult> GetDetails( Guid productId, ProductDetailsRepository repository )
+    static async Task<IResult> GetDetails( string productId, ProductDetailsRepository repository )
     {
-        ProductDto? result = await repository.GetDetails( productId );
+        if (!Guid.TryParse( productId, out Guid id ))
+            return Results.BadRequest( "Invalid Product Id." );
+        ProductDto? result = await repository.GetDetails( id );
         return result is not null
             ? Results.Ok( result )
             : Results.NotFound();
