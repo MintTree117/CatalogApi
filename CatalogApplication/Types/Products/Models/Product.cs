@@ -9,4 +9,7 @@ internal record Product(
     string Name,
     string Image,
     decimal Price,
-    decimal SalePrice );
+    decimal SalePrice,
+    int NumberSold,
+    int NumberRatings,
+    float Rating );

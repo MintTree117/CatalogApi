@@ -24,7 +24,9 @@ internal static class ProductGenerator
                 
                 List<Category> sc = 
                     PickRandomCategories( primaryCategory, secondaryCategories, random );
-                Product p = new( 
+                int numSold = PickNumberSold( random );
+                (int,float) rating = PickRating( numSold, random );
+                Product p = new(
                     Guid.NewGuid(),
                     primaryCategory.Id,
                     PickBrandId( sc, brands, brandCategories, random ),
@@ -33,7 +35,10 @@ internal static class ProductGenerator
                     PickName( primaryCategory, i ),
                     PickImage( primaryCategory, random ),
                     PickPrice( random, out decimal price ),
-                    PickSalePrice( price, random ) );
+                    PickSalePrice( price, random ),
+                    numSold,
+                    rating.Item1,
+                    rating.Item2 );
                 List<ProductCategory> pc = 
                     GenerateProductCategories( p, sc );
                 ProductDescription pd =
@@ -66,6 +71,9 @@ internal static class ProductGenerator
         table.Columns.Add( nameof( Product.Image ), typeof( string ) );
         table.Columns.Add( nameof( Product.Price ), typeof( decimal ) );
         table.Columns.Add( nameof( Product.SalePrice ), typeof( decimal ) );
+        table.Columns.Add( nameof( Product.NumberSold ), typeof( int ) );
+        table.Columns.Add( nameof( Product.NumberRatings ), typeof( int ) );
+        table.Columns.Add( nameof( Product.Rating ), typeof( float ) );
         
         foreach ( Product p in products ) {
             DataRow row = table.NewRow();
@@ -78,6 +86,9 @@ internal static class ProductGenerator
             row[nameof( Product.Image )] = p.Image;
             row[nameof( Product.Price )] = p.Price;
             row[nameof( Product.SalePrice )] = p.SalePrice;
+            row[nameof( Product.NumberSold )] = p.NumberSold;
+            row[nameof( Product.NumberRatings )] = p.NumberRatings;
+            row[nameof( Product.Rating )] = p.Rating;
             table.Rows.Add( row );
         }
 
@@ -264,9 +275,9 @@ internal static class ProductGenerator
     static string PickImage( Category primaryCategory, RandomUtility random )
     {
         return ProductSeedData.TestImage;
-        int i = random.GetRandomInt( ProductSeedData.ImagesPerCategory - 1 );
+        /*int i = random.GetRandomInt( ProductSeedData.ImagesPerCategory - 1 );
         string image = $"{primaryCategory.Name}/{i}.png";
-        return image;
+        return image;*/
     }
     static decimal PickPrice( RandomUtility random, out decimal price )
     {
@@ -282,5 +293,19 @@ internal static class ProductGenerator
         double maxSalePrice = 0.9 * (double) mainPrice;
         double salePrice = random.GetRandomDouble( maxSalePrice );
         return (decimal) salePrice;
+    }
+    static int PickNumberSold( RandomUtility random )
+    {
+        int number = random.GetRandomInt( 0, 10000 );
+        return number;
+    }
+    static (int, float) PickRating( int numSold, RandomUtility random )
+    {
+        int numRatings = random.GetRandomInt( 0, numSold );
+        float rating = 0;
+        for ( int i = 0; i < numRatings; i++ )
+            rating += random.GetRandomInt( 1, 5 );
+        rating /= numRatings;
+        return (numRatings, rating);
     }
 }
