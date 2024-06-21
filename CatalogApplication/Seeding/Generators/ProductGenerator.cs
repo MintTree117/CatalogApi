@@ -302,10 +302,7 @@ internal static class ProductGenerator
     static (int, float) PickRating( int numSold, RandomUtility random )
     {
         int numRatings = random.GetRandomInt( 0, numSold );
-        float rating = 0;
-        for ( int i = 0; i < numRatings; i++ )
-            rating += random.GetRandomInt( 1, 5 );
-        rating /= numRatings;
+        float rating = (float) random.GetRandomDouble( 1, 5 );
         return (numRatings, rating);
     }
 }
