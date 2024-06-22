@@ -1,4 +1,5 @@
 using System.Text;
+using CatalogApplication.Utilities;
 
 namespace CatalogApplication.Middleware;
 

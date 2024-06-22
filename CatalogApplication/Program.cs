@@ -3,6 +3,7 @@ using CatalogApplication.Database;
 using CatalogApplication.Middleware;
 using CatalogApplication.Repositories;
 using CatalogApplication.Seeding;
+using CatalogApplication.Utilities;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder( args );
 

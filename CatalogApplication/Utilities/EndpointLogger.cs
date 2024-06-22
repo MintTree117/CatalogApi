@@ -1,6 +1,6 @@
 using CatalogApplication.Types._Common.ReplyTypes;
 
-namespace CatalogApplication;
+namespace CatalogApplication.Utilities;
 
 internal sealed class EndpointLogger // Static Singleton
 {

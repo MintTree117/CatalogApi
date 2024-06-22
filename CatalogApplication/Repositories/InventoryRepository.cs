@@ -1,7 +1,6 @@
 using CatalogApplication.Database;
 using CatalogApplication.Types._Common.Geography;
 using CatalogApplication.Types.Products.Models;
-using CatalogApplication.Types.Search.Dtos;
 using CatalogApplication.Types.Stock;
 
 namespace CatalogApplication.Repositories;

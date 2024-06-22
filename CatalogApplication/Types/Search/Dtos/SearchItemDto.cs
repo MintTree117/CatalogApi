@@ -8,7 +8,6 @@ internal readonly record struct SearchItemDto(
     bool IsFeatured,
     bool IsInStock,
     decimal Price,
-    decimal? SalePrice,
-    int NumberSold,
+    decimal SalePrice,
     int NumberRatings,
     float Rating );
