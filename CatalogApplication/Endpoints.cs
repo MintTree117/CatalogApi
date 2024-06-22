@@ -19,8 +19,8 @@ internal static class Endpoints
             await GetBrands( repository ) );
         app.MapGet( "api/search", static async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
             await GetSearch( http, products, inventory ) );
-        app.MapGet( "api/details", static async ( [FromQuery] string productId, ProductDetailsRepository repository ) =>
-            await GetDetails( productId, repository ) );
+        app.MapGet( "api/details", static async ( [FromQuery] string productId, [FromQuery] string? posX, [FromQuery] string? posY, ProductDetailsRepository details, InventoryRepository inventory ) =>
+            await GetDetails( productId, posX, posY, details, inventory ) );
     }
     
     static async Task<IResult> GetCategories( CategoryRepository repository )
@@ -65,20 +65,27 @@ internal static class Endpoints
         // SHIPPING
         AddressDto? deliveryAddress = filters.PosX is null || filters.PosY is null 
             ? null : new AddressDto( filters.PosX.Value, filters.PosY.Value );
-        List<int> estimatesReply = await inventory.GetDeliveryEstimates( searchReply.Value.Results, deliveryAddress );
+        List<Guid> productIds = searchReply.Value.Results.Select( static p => p.Id ).ToList();
+        List<int> estimatesReply = await inventory.GetDeliveryEstimates( productIds, deliveryAddress );
         
         // FINISH
         SearchResultsDto resultsDto = new( searchReply.Value.TotalMatches, searchReply.Value.Results, estimatesReply );
         return Results.Ok( resultsDto );
     }
-    static async Task<IResult> GetDetails( string productId, ProductDetailsRepository repository )
+    static async Task<IResult> GetDetails( string productId, string? posX, string? posY, ProductDetailsRepository repository, InventoryRepository inventory )
     {
         if (!Guid.TryParse( productId, out Guid id ))
             return Results.BadRequest( "Invalid Product Id." );
+
         ProductDto? result = await repository.GetDetails( id );
-        return result is not null
-            ? Results.Ok( result )
-            : Results.NotFound();
+        
+        if (result is null || !int.TryParse( posX, out int x ) || !int.TryParse( posY, out int y ))
+            return result is not null
+                ? Results.Ok( result )
+                : Results.NotFound();
+
+        var shippingDays = await inventory.GetDeliveryEstimates( [result.Value.Id], new AddressDto( x, y ) );
+        return Results.Ok( result.Value with { ShippingDays = shippingDays.FirstOrDefault() } );
     }
 
     static List<Guid>? ParseGuidList( string? value )

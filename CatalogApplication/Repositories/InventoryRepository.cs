@@ -43,10 +43,10 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
     }
     
     // GET ESTIMATES
-    internal async Task<List<int>> GetDeliveryEstimates( List<SearchItemDto> items, AddressDto? deliveryAddress )
+    internal async Task<List<int>> GetDeliveryEstimates( List<Guid> itemIds, AddressDto? deliveryAddress )
     {
         if (deliveryAddress is null)
-            return GetDefaultDays( items.Count );
+            return GetDefaultDays( itemIds.Count );
 
         if (_warehouses.Count <= 0)
         {
@@ -56,14 +56,14 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
         
         try
         {
-            return await CalculateEstimates( items, deliveryAddress.Value );
+            return await CalculateEstimates( itemIds, deliveryAddress.Value );
         }
         catch ( Exception e ) {
             LogException( e, "An error occured while executing GetDeliveryEstimateDays()." );
-            return GetDefaultDays( items.Count );
+            return GetDefaultDays( itemIds.Count );
         }
     }
-    async Task<List<int>> CalculateEstimates( List<SearchItemDto> items, AddressDto deliveryAddress )
+    async Task<List<int>> CalculateEstimates( List<Guid> itemIds, AddressDto deliveryAddress )
     {
         return await Task.Run( () => {
             List<int> estimates = [];
@@ -73,8 +73,8 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
                 if (CalculateDistance( deliveryAddress.PosX, deliveryAddress.PosY, w.PosX, w.PosY ) < MaxWarehouseCheckRadius)
                     warehousesToCheck.Add( w );
             
-            foreach ( SearchItemDto i in items )
-                estimates.Add( GetEstimateDays( i.Id, deliveryAddress, warehousesToCheck ) );
+            foreach ( Guid i in itemIds )
+                estimates.Add( GetEstimateDays( i, deliveryAddress, warehousesToCheck ) );
             
             return estimates;
         } );
