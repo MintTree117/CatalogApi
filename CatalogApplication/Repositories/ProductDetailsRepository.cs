@@ -21,7 +21,7 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
         SELECT CategoryId FROM CatalogApi.ProductCategories
                   WHERE ProductId = @productId;
         SELECT
-            p.Id, p.BrandId, p.Name, p.Image, p.IsFeatured, p.Price, p.SalePrice, p.NumberSold, p.NumberRatings, p.Rating,
+            p.Id, p.BrandId, p.Name, p.Image, p.IsFeatured, p.IsInStock p.Price, p.SalePrice, p.NumberSold, p.NumberRatings, p.Rating,
             pd.Description,
             px.Xml
         FROM CatalogApi.Products p

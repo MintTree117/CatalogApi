@@ -106,7 +106,7 @@ internal static class Endpoints
                 ? Results.Ok( result )
                 : Results.NotFound();
 
-        var shippingDays = await inventory.GetDeliveryEstimates( [result.Value.Id], new AddressDto( posX.Value, posX.Value ) );
+        var shippingDays = await inventory.GetDeliveryEstimates( [result.Value.Id], new AddressDto( posX.Value, posY.Value ) );
         return Results.Ok( result.Value with { ShippingDays = shippingDays.FirstOrDefault() } );
     }
 }
