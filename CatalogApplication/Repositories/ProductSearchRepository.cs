@@ -18,7 +18,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     // language=sql
     const string SearchTextJoinSql = " INNER JOIN CatalogApi.ProductXmls pt ON p.Id = pt.ProductId";
     // language=sql
-    const string ProductSql = "SELECT DISTINCT p.Id, p.BrandId, p.Name, p.Image, p.IsInStock, p.IsFeatured, p.Price, p.SalePrice, p.NumberSold, p.NumberRatings, p.Rating FROM CatalogApi.Products p";
+    const string ProductSql = "SELECT DISTINCT p.Id, p.BrandId, p.Name, p.Image, p.IsFeatured, p.IsInStock, p.Price, p.SalePrice, p.NumberSold, p.NumberRatings, p.Rating FROM CatalogApi.Products p";
     // language=sql
     const string CountSql = "SELECT COUNT(*) FROM CatalogApi.Products p";
     // language=sql
