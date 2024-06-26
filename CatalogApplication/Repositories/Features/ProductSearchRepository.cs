@@ -1,6 +1,9 @@
 using System.Data;
 using System.Text;
 using CatalogApplication.Database;
+using CatalogApplication.Types._Common.ReplyTypes;
+using CatalogApplication.Types.Products.Dtos;
+using CatalogApplication.Types.Products.Models;
 using CatalogApplication.Types.Search.Dtos;
 using CatalogApplication.Types.Search.Local;
 using Dapper;
@@ -38,11 +41,29 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     // language=sql
     const string SaleSql = " AND p.SalePrice > 0";
 
-    internal async Task<SearchQueryReply?> GetSearch( SearchFilters filters )
+    internal async Task<Replies<ProductDto>> SearchByIds( List<Guid> productIds )
     {
-        LogInformation( $"{filters.CategoryId} {filters.Page} {filters.IsInStock}" );
-        
-        try {
+        // language=sql
+        const string sql = "SELECT * FROM CatalogApi.Products p WHERE p.Id IN (SELECT Id FROM @productIds)";
+
+        try
+        {
+            var idsTable = GetIdsDataTable( productIds );
+            var parameters = new DynamicParameters();
+            parameters.Add( "productIds", idsTable.AsTableValuedParameter( "CatalogApi.ProductIdsTvp" ) );
+            var reply = await Dapper.QueryAsync<ProductDto>( sql, parameters );
+            return reply;
+        }
+        catch ( Exception e )
+        {
+            Console.WriteLine( e );
+            throw;
+        }
+    }
+    internal async Task<SearchQueryReply?> SearchByCatalog( SearchFilters filters )
+    {
+        try 
+        {
             await using SqlConnection connection = await Dapper.GetOpenConnection();
 
             if (connection.State != ConnectionState.Open) {
@@ -50,7 +71,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
                 return null;
             }
 
-            BuildSqlQuery( filters, out string sql, out DynamicParameters parameters );
+            BuildCatalogSearchSql( filters, out string sql, out DynamicParameters parameters );
             await using SqlMapper.GridReader multi = await connection.QueryMultipleAsync( sql, parameters, commandType: CommandType.Text );
 
             SearchQueryReply queryReply = new(
@@ -59,12 +80,14 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
 
             return queryReply;
         }
-        catch ( Exception e ) {
+        catch ( Exception e ) 
+        {
             LogException( e, $"An exception occured while executing product search: {e.Message}" );
             return null;
         }
     }
-    internal void BuildSqlQuery( SearchFilters filters, out string sql, out DynamicParameters parameters )
+    
+    void BuildCatalogSearchSql( SearchFilters filters, out string sql, out DynamicParameters parameters )
     {
         // START
         StringBuilder productBuilder = new();
@@ -109,7 +132,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         if (filters.BrandIds is not null) {
             productBuilder.Append( BrandsSql );
             countBuilder.Append( BrandsSql );
-            p.Add( "brandIds", GetDataTable( filters.BrandIds ).AsTableValuedParameter( "CatalogApi.BrandIdsTvp" ) );
+            p.Add( "brandIds", GetIdsDataTable( filters.BrandIds ).AsTableValuedParameter( "CatalogApi.BrandIdsTvp" ) );
         }
         // MIN PRICE
         if (filters.MinPrice is not null) {
@@ -171,8 +194,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             };
         }
     }
-    
-    static DataTable GetDataTable( List<Guid> ids )
+    static DataTable GetIdsDataTable( List<Guid> ids )
     {
         const string idColumn = "Id";
         DataTable table = new();

@@ -1,4 +1,3 @@
-using CatalogApplication.Repositories;
 using CatalogApplication.Repositories.Features;
 using CatalogApplication.Types._Common.Geography;
 using CatalogApplication.Types.Categories;
@@ -13,16 +12,29 @@ internal static class Endpoints
 {
     internal static void MapEndpoints( this IEndpointRouteBuilder app )
     {
-        app.MapGet( "api/categories", static async ( CategoryRepository repository ) => 
-            await GetCategories( repository ) );
-        app.MapGet( "api/brands", static async ( BrandRepository repository ) =>
-            await GetBrands( repository ) );
-        app.MapGet( "api/search", static async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
-            await GetSearch( http, products, inventory ) );
-        app.MapGet( "api/estimates", static async ( HttpContext http, InventoryRepository inventory ) =>
-            await GetEstimates( http, inventory ) );
-        app.MapGet( "api/details", static async ( HttpContext http, ProductDetailsRepository details, InventoryRepository inventory ) =>
-            await GetDetails( http, details, inventory ) );
+        app.MapGet( "api/categories",
+            static async ( CategoryRepository repository ) =>
+                await GetCategories( repository ) );
+        
+        app.MapGet( "api/brands",
+            static async ( BrandRepository repository ) =>
+                await GetBrands( repository ) );
+        
+        app.MapGet( "api/searchProducts",
+            static async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
+                await GetProductIdsSearch( http, products, inventory ) );
+        
+        app.MapGet( "api/searchCatalog",
+            static async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
+                await GetCatalogSearch( http, products, inventory ) );
+        
+        app.MapGet( "api/estimates",
+            static async ( HttpContext http, InventoryRepository inventory ) =>
+                await GetEstimates( http, inventory ) );
+        
+        app.MapGet( "api/details",
+            static async ( HttpContext http, ProductDetailsRepository details, InventoryRepository inventory ) =>
+                await GetDetails( http, details, inventory ) );
     }
     
     static async Task<IResult> GetCategories( CategoryRepository repository )
@@ -39,7 +51,6 @@ internal static class Endpoints
             ? Results.Ok( reply )
             : Results.NotFound();
     }
-
     static async Task<IResult> GetEstimates( HttpContext http, InventoryRepository inventory )
     {
         IQueryCollection query = http.Request.Query;
@@ -55,7 +66,28 @@ internal static class Endpoints
         var estimates = await inventory.GetDeliveryEstimates( productIds, new AddressDto( posX.Value, posX.Value ) );
         return Results.Ok( estimates );
     }
-    static async Task<IResult> GetSearch( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
+    static async Task<IResult> GetProductIdsSearch( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
+    {
+        IQueryCollection query = http.Request.Query;
+        var productIds = Utils.ParseGuidList( query["ProductIds"] );
+        var posX = Utils.ParseInt( query["PosX"] );
+        var posY = Utils.ParseInt( query["PosY"] );
+
+        if (productIds is null)
+            return Results.BadRequest( "Invalid Product Ids." );
+
+        var searchReply = await products.SearchByIds( productIds );
+        if (!searchReply)
+            return Results.NotFound();
+
+        AddressDto? address = null;
+        if (posX is not null && posY is not null)
+            address = new AddressDto( posX.Value, posX.Value );
+
+        var estimates = await inventory.GetDeliveryEstimates( productIds, address );
+        return Results.Ok( new SearchProductsDto( searchReply.Enumerable.ToList(), estimates ) );
+    }
+    static async Task<IResult> GetCatalogSearch( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
     {
         // FILTERS
         IQueryCollection query = http.Request.Query;
@@ -76,7 +108,7 @@ internal static class Endpoints
         );
         
         // SEARCH
-        SearchQueryReply? searchReply = await products.GetSearch( filters );
+        SearchQueryReply? searchReply = await products.SearchByCatalog( filters );
         if (searchReply is null)
             return Results.NotFound();
         
@@ -109,11 +141,6 @@ internal static class Endpoints
 
         var shippingDays = await inventory.GetDeliveryEstimates( [result.Value.Id], new AddressDto( posX.Value, posY.Value ) );
         return Results.Ok( result.Value with { ShippingDays = shippingDays.FirstOrDefault() } );
-    }
-
-    static async Task<IResult> GetProductsForId( List<Guid> productIds, ProductSpecialRepository repository )
-    {
-        return Results.Ok();
     }
     static async Task<IResult> GetFrontPageSpecials( ProductSpecialRepository repository )
     {

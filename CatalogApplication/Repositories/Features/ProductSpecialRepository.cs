@@ -14,11 +14,6 @@ internal sealed class ProductSpecialRepository( IDapperContext dapper, ILogger<P
     {
         throw new Exception();
     }
-    internal async Task<Replies<Product>> GetProductsForIds( List<Guid> productIds )
-    {
-        throw new Exception();
-    }
-    
     async Task<Replies<Product>> GetTopFeatured()
     {
         throw new Exception();
