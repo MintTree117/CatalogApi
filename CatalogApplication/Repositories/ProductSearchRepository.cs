@@ -9,10 +9,8 @@ using Microsoft.Data.SqlClient;
 namespace CatalogApplication.Repositories;
 
 internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<ProductSearchRepository> logger ) 
-    : BaseRepository<ProductSearchRepository>( logger )
+    : BaseRepository<ProductSearchRepository>( dapper, logger )
 {
-    readonly IDapperContext _dapper = dapper;
-    
     // language=sql
     const string CategoryJoinSql = " INNER JOIN CatalogApi.ProductCategories pc ON p.Id = pc.ProductId";
     // language=sql
@@ -45,7 +43,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         LogInformation( $"{filters.CategoryId} {filters.Page} {filters.IsInStock}" );
         
         try {
-            await using SqlConnection connection = await _dapper.GetOpenConnection();
+            await using SqlConnection connection = await Dapper.GetOpenConnection();
 
             if (connection.State != ConnectionState.Open) {
                 LogError( $"Invalid connection state: {connection.State}" );

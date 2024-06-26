@@ -1,5 +1,6 @@
 using System.Data;
 using CatalogApplication.Database;
+using CatalogApplication.Types._Common.ReplyTypes;
 using CatalogApplication.Types.Brands.Dtos;
 using CatalogApplication.Types.Brands.Models;
 using Dapper;
@@ -9,52 +10,21 @@ namespace CatalogApplication.Repositories;
 
 internal sealed class BrandRepository : BaseRepository<BrandRepository>
 {
-    readonly IDapperContext _dapper;
-    readonly TimeSpan _cacheLifeMinutes = TimeSpan.FromMinutes( 10 );
-    readonly object _cacheLock = new();
+    readonly MemoryCache<BrandsReply, BrandRepository> _memoryCache;
     
-    bool _isUpdating = false;
-    Timer _timer;
-    DateTime _lastCacheUpdate = DateTime.Now;
-    BrandsReply? _filters = null;
-    
-    public BrandRepository( IDapperContext dapper, ILogger<BrandRepository> logger ) : base(logger)
+    public BrandRepository( IDapperContext dapper, ILogger<BrandRepository> logger ) : base( dapper, logger)
     {
-        _dapper = dapper;
-        _timer = new Timer( _ => Update(), null, TimeSpan.Zero, _cacheLifeMinutes );
-
-        async void Update()
-        {
-            bool success = await FetchBrands();
-
-            if (!success) LogError( "Brands update failed." );
-            else LogInformation( "Brands update success." );
-        }
+        _memoryCache = new MemoryCache<BrandsReply, BrandRepository>( TimeSpan.FromHours( 1 ), FetchBrands, logger );
     }
 
-    internal async Task<BrandsReply?> GetBrands()
+    internal async Task<Reply<BrandsReply>> GetBrands()
     {
-        const int Safety = 5;
-        int count = 0;
-        bool waited = false;
-        while ( _isUpdating && count < Safety )
-        {
-            waited = true;
-            await Task.Delay( 500 );
-            count++;
-        }
-
-        bool filtersValid =
-            _filters is not null &&
-            DateTime.Now - _lastCacheUpdate < _cacheLifeMinutes;
-
-        if (filtersValid || waited)
-            return _filters;
-        
-        await FetchBrands();
-        return _filters;
+        var cacheReply = await _memoryCache.Get();
+        return cacheReply
+            ? cacheReply
+            : await FetchBrands();
     }
-    async Task<bool> FetchBrands()
+    async Task<Reply<BrandsReply>> FetchBrands()
     {
         const string sql =
             """
@@ -64,14 +34,11 @@ internal sealed class BrandRepository : BaseRepository<BrandRepository>
         
         try 
         {
-            lock ( _cacheLock )
-                _isUpdating = true;
-            
-            await using SqlConnection connection = await _dapper.GetOpenConnection();
+            await using SqlConnection connection = await Dapper.GetOpenConnection();
 
             if (connection.State != ConnectionState.Open) {
                 LogError( $"Invalid connection state: {connection.State}" );
-                return false;
+                return Reply<BrandsReply>.ServerError();
             }
 
             await using SqlMapper.GridReader reader = await connection.QueryMultipleAsync( sql, commandType: CommandType.Text );
@@ -79,20 +46,13 @@ internal sealed class BrandRepository : BaseRepository<BrandRepository>
                 (await reader.ReadAsync<Brand>()).ToList(),
                 (await reader.ReadAsync<BrandCategory>()).ToList() );
 
-            lock ( _cacheLock )
-            {
-                _filters = brands;
-                _lastCacheUpdate = DateTime.Now;
-                _isUpdating = false;
-            }
-
-            LogInformation( "Brands updated." );
-            return true;
+            LogInformation( "Brands fetched from database." );
+            return Reply<BrandsReply>.Success( brands );
         }
         catch ( Exception e ) 
         {
-            LogException( e, $"Error while attempting to fetch brands from repository: {e.Message}" );
-            return false;
+            LogException( e, $"Error while attempting to fetch brands from database: {e.Message}" );
+            return Reply<BrandsReply>.ServerError();
         }
     }
 }

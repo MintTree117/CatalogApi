@@ -8,7 +8,6 @@ namespace CatalogApplication.Repositories;
 internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
 {
     readonly IServiceProvider _provider;
-    readonly IDapperContext _dapper;
     readonly TimeSpan _cacheLifetime = TimeSpan.FromMinutes( 30 );
     readonly object _cacheLock = new();
 
@@ -26,10 +25,9 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
     Dictionary<Warehouse, Dictionary<Guid, int>> _inventories = [];
     
     // CONSTRUCTOR
-    public InventoryRepository( IServiceProvider provider, IDapperContext dapper, ILogger<InventoryRepository> logger ) : base( logger )
+    public InventoryRepository( IServiceProvider provider, IDapperContext dapper, ILogger<InventoryRepository> logger ) : base( dapper, logger )
     {
         _provider = provider;
-        _dapper = dapper;
         _cacheTimer = new Timer( _ => OnCacheTimer(), null, TimeSpan.FromMinutes( 5 ), _cacheLifetime );
 
         async void OnCacheTimer()
@@ -155,7 +153,7 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
     async Task<List<Warehouse>?> GetWarehouseData()
     {
         const string sql = "SELECT * FROM CatalogApi.Warehouses";
-        var result = await _dapper.QueryAsync<Warehouse>( sql );
+        var result = await Dapper.QueryAsync<Warehouse>( sql );
         return result
             ? result.Enumerable.ToList()
             : null;
@@ -163,7 +161,7 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
     async Task<List<ProductInventory>?> GetInventoryData()
     {
         const string sql = "SELECT * FROM CatalogApi.ProductInventories";
-        var result = await _dapper.QueryAsync<ProductInventory>( sql );
+        var result = await Dapper.QueryAsync<ProductInventory>( sql );
         return result
             ? result.Enumerable.ToList()
             : null;
@@ -176,9 +174,6 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
             .CreateClient() 
             ?? throw new Exception( "Failed to create HttpClient." );
     }
-    readonly record struct StockDto(
-        Guid ItemId,
-        int Quantity );
 }
 
 /*using HttpClient http = GetHttpClient();

@@ -1,9 +1,11 @@
+using CatalogApplication.Database;
 using CatalogApplication.Types._Common.ReplyTypes;
 namespace CatalogApplication.Repositories;
 
-internal abstract class BaseRepository<T>( ILogger<T> logger )
+internal abstract class BaseRepository<T>( IDapperContext dapper, ILogger<T> logger )
 {
     protected readonly ILogger<T> Logger = logger;
+    protected readonly IDapperContext Dapper = dapper;
 
     protected void LogIfErrorReply( IReply reply )
     {

@@ -1,6 +1,5 @@
 using CatalogApplication.Repositories;
 using CatalogApplication.Types._Common.Geography;
-using CatalogApplication.Types.Brands.Dtos;
 using CatalogApplication.Types.Categories;
 using CatalogApplication.Types.Products.Dtos;
 using CatalogApplication.Types.Search.Dtos;
@@ -34,10 +33,26 @@ internal static class Endpoints
     }
     static async Task<IResult> GetBrands( BrandRepository repository )
     {
-        BrandsReply? result = await repository.GetBrands();
-        return result is not null
-            ? Results.Ok( result )
+        var reply = await repository.GetBrands();
+        return reply
+            ? Results.Ok( reply )
             : Results.NotFound();
+    }
+
+    static async Task<IResult> GetEstimates( HttpContext http, InventoryRepository inventory )
+    {
+        IQueryCollection query = http.Request.Query;
+        var productIds = Utils.ParseGuidList( query["ProductIds"] );
+        var posX = Utils.ParseInt( query["PosX"] );
+        var posY = Utils.ParseInt( query["PosY"] );
+
+        if (productIds is null)
+            return Results.BadRequest( "Invalid Product Ids." );
+        if (posX is null || posY is null)
+            return Results.BadRequest( "Invalid Address." );
+
+        var estimates = await inventory.GetDeliveryEstimates( productIds, new AddressDto( posX.Value, posX.Value ) );
+        return Results.Ok( estimates );
     }
     static async Task<IResult> GetSearch( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
     {
@@ -74,21 +89,6 @@ internal static class Endpoints
         SearchResultsDto resultsDto = new( searchReply.Value.TotalMatches, searchReply.Value.Results, estimatesReply );
         return Results.Ok( resultsDto );
     }
-    static async Task<IResult> GetEstimates( HttpContext http, InventoryRepository inventory )
-    {
-        IQueryCollection query = http.Request.Query;
-        var productIds = Utils.ParseGuidList( query["ProductIds"] );
-        var posX = Utils.ParseInt( query["PosX"] );
-        var posY = Utils.ParseInt( query["PosY"] );
-
-        if (productIds is null)
-            return Results.BadRequest( "Invalid Product Ids." );
-        if (posX is null || posY is null)
-            return Results.BadRequest( "Invalid Address." );
-
-        var estimates = await inventory.GetDeliveryEstimates( productIds, new AddressDto( posX.Value, posX.Value ) );
-        return Results.Ok( estimates );
-    }
     static async Task<IResult> GetDetails( HttpContext http, ProductDetailsRepository repository, InventoryRepository inventory )
     {
         IQueryCollection query = http.Request.Query;
@@ -108,5 +108,14 @@ internal static class Endpoints
 
         var shippingDays = await inventory.GetDeliveryEstimates( [result.Value.Id], new AddressDto( posX.Value, posY.Value ) );
         return Results.Ok( result.Value with { ShippingDays = shippingDays.FirstOrDefault() } );
+    }
+
+    static async Task<IResult> GetProductsForId( List<Guid> productIds, ProductSpecialRepository repository )
+    {
+        return Results.Ok();
+    }
+    static async Task<IResult> GetFrontPageSpecials( ProductSpecialRepository repository )
+    {
+        return Results.Ok();
     }
 }

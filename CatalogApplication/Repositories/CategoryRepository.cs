@@ -14,7 +14,7 @@ internal sealed class CategoryRepository : BaseRepository<CategoryRepository>
     DateTime _lastCacheUpdate = DateTime.Now;
     List<Category>? _cachedCategories = null;
 
-    public CategoryRepository( IDapperContext dapper, ILogger<CategoryRepository> logger ) : base(logger)
+    public CategoryRepository( IDapperContext dapper, ILogger<CategoryRepository> logger ) : base( dapper, logger )
     {
         _dapper = dapper;
         _timer = new Timer( _ => Update(), null, TimeSpan.Zero, _cacheLifeMinutes );

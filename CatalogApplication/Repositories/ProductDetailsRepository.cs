@@ -8,7 +8,6 @@ namespace CatalogApplication.Repositories;
 
 internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRepository>
 {
-    readonly IDapperContext _dapper;
     readonly TimeSpan _cacheLifeMinutes = TimeSpan.FromMinutes( 5 );
     readonly object _cacheLock = new();
     
@@ -30,9 +29,8 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
             WHERE p.Id = @productId;
         """;
     
-    public ProductDetailsRepository( IDapperContext dapper, ILogger<ProductDetailsRepository> logger ) : base( logger )
+    public ProductDetailsRepository( IDapperContext dapper, ILogger<ProductDetailsRepository> logger ) : base( dapper, logger )
     {
-        _dapper = dapper;
         _timer = new Timer( _ => Cleanup(), null, TimeSpan.Zero, _cacheLifeMinutes );
     }
 
@@ -50,7 +48,7 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
     async Task<bool> FetchDetails( Guid productId )
     {
         try {
-            await using SqlConnection connection = await _dapper.GetOpenConnection();
+            await using SqlConnection connection = await Dapper.GetOpenConnection();
 
             if (connection.State != ConnectionState.Open) {
                 LogError( $"Invalid connection state: {connection.State}" );
