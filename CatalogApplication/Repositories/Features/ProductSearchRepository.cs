@@ -41,7 +41,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     // language=sql
     const string SaleSql = " AND p.SalePrice > 0";
 
-    internal async Task<Replies<ProductDto>> SearchByIds( List<Guid> productIds )
+    internal async Task<Replies<ProductDto>> View( List<Guid> productIds )
     {
         // language=sql
         const string sql = "SELECT * FROM CatalogApi.Products p WHERE p.Id IN (SELECT Id FROM @productIds)";
@@ -60,7 +60,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             throw;
         }
     }
-    internal async Task<SearchQueryReply?> SearchByCatalog( SearchFilters filters )
+    internal async Task<SearchQueryReply?> Search( SearchFilters filters )
     {
         try 
         {
