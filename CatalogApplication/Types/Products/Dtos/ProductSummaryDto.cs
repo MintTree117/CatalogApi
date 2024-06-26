@@ -1,6 +1,6 @@
-namespace CatalogApplication.Types.Search.Dtos;
+namespace CatalogApplication.Types.Products.Dtos;
 
-internal readonly record struct SearchItemDto(
+internal readonly record struct ProductSummaryDto(
     Guid Id,
     Guid BrandId,
     string Name,

@@ -9,19 +9,19 @@ namespace CatalogApplication.Repositories.Features;
 
 internal sealed class ProductSpecialRepository : BaseRepository<ProductSpecialRepository>
 {
-    readonly MemoryCache<SpecialsDto, ProductSpecialRepository> _memoryCache;
+    readonly MemoryCache<ProductSpecialsDto, ProductSpecialRepository> _memoryCache;
 
     public ProductSpecialRepository( IDapperContext dapper, ILogger<ProductSpecialRepository> logger ) : base( dapper, logger )
-        => _memoryCache = new MemoryCache<SpecialsDto, ProductSpecialRepository>( TimeSpan.FromHours( 1 ), FetchSpecials, logger );
+        => _memoryCache = new MemoryCache<ProductSpecialsDto, ProductSpecialRepository>( TimeSpan.FromHours( 1 ), FetchSpecials, logger );
     
-    internal async Task<Reply<SpecialsDto>> GetSpecials()
+    internal async Task<Reply<ProductSpecialsDto>> GetSpecials()
     {
         var cacheReply = await _memoryCache.Get();
         return cacheReply
             ? cacheReply
             : await FetchSpecials();
     }
-    async Task<Reply<SpecialsDto>> FetchSpecials()
+    async Task<Reply<ProductSpecialsDto>> FetchSpecials()
     {
         const string sql =
             """
@@ -37,21 +37,21 @@ internal sealed class ProductSpecialRepository : BaseRepository<ProductSpecialRe
             if (connection.State != ConnectionState.Open)
             {
                 LogError( $"Invalid connection state: {connection.State}" );
-                return Reply<SpecialsDto>.ServerError();
+                return Reply<ProductSpecialsDto>.ServerError();
             }
 
             await using SqlMapper.GridReader multi = await connection.QueryMultipleAsync( sql, commandType: CommandType.Text );
-            SpecialsDto specials = new(
-                (await multi.ReadAsync<ProductDto>()).ToList(),
-                (await multi.ReadAsync<ProductDto>()).ToList(),
-                (await multi.ReadAsync<ProductDto>()).ToList() );
+            ProductSpecialsDto productSpecials = new(
+                (await multi.ReadAsync<ProductDetailsDto>()).ToList(),
+                (await multi.ReadAsync<ProductDetailsDto>()).ToList(),
+                (await multi.ReadAsync<ProductDetailsDto>()).ToList() );
 
-            return Reply<SpecialsDto>.Success( specials );
+            return Reply<ProductSpecialsDto>.Success( productSpecials );
         }
         catch ( Exception e )
         {
             LogException( e, $"An exception occured while executing get specials: {e.Message}" );
-            return Reply<SpecialsDto>.ServerError();
+            return Reply<ProductSpecialsDto>.ServerError();
         }
     }
 }

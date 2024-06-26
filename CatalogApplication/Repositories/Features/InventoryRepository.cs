@@ -2,7 +2,7 @@ using CatalogApplication.Database;
 using CatalogApplication.Types._Common.Geography;
 using CatalogApplication.Types._Common.ReplyTypes;
 using CatalogApplication.Types.Products.Models;
-using CatalogApplication.Types.Stock;
+using CatalogApplication.Types.Warehouses;
 
 namespace CatalogApplication.Repositories.Features;
 

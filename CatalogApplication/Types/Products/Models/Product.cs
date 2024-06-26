@@ -1,8 +1,7 @@
 namespace CatalogApplication.Types.Products.Models;
 
-internal record Product(
+internal sealed record Product(
     Guid Id,
-    Guid PrimaryCategoryId,
     Guid BrandId,
     bool IsFeatured,
     bool IsInStock,
@@ -10,6 +9,6 @@ internal record Product(
     string Image,
     decimal Price,
     decimal SalePrice,
-    int NumberSold,
+    float Rating,
     int NumberRatings,
-    float Rating );
+    int NumberSold );

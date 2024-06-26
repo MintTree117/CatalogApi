@@ -2,8 +2,7 @@ using CatalogApplication.Repositories.Features;
 using CatalogApplication.Types._Common.Geography;
 using CatalogApplication.Types.Categories;
 using CatalogApplication.Types.Products.Dtos;
-using CatalogApplication.Types.Search.Dtos;
-using CatalogApplication.Types.Search.Local;
+using CatalogApplication.Types.Products.Models;
 using CatalogApplication.Utilities;
 
 namespace CatalogApplication;
@@ -89,7 +88,7 @@ internal static class Endpoints
             address = new AddressDto( posX.Value, posX.Value );
 
         var estimates = await inventory.GetDeliveryEstimates( productIds, address );
-        return Results.Ok( new SearchProductsDto( searchReply.Enumerable.ToList(), estimates ) );
+        return Results.Ok( new ProductsDto( searchReply.Enumerable.ToList(), estimates ) );
     }
     static async Task<IResult> GetSearch( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
     {
@@ -123,8 +122,8 @@ internal static class Endpoints
         List<int> estimatesReply = await inventory.GetDeliveryEstimates( productIds, deliveryAddress );
         
         // FINISH
-        SearchResultsDto resultsDto = new( searchReply.Value.TotalMatches, searchReply.Value.Results, estimatesReply );
-        return Results.Ok( resultsDto );
+        ProductsSearchDto dto = new( searchReply.Value.TotalMatches, searchReply.Value.Results, estimatesReply );
+        return Results.Ok( dto );
     }
     static async Task<IResult> GetDetails( HttpContext http, ProductDetailsRepository repository, InventoryRepository inventory )
     {
@@ -136,7 +135,7 @@ internal static class Endpoints
         if (productId is null)
             return Results.BadRequest( "Invalid Product Id." );
 
-        ProductDto? result = await repository.GetDetails( productId.Value );
+        ProductDetailsDto? result = await repository.GetDetails( productId.Value );
         
         if (result is null || posX is null || posY is null)
             return result is not null

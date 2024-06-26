@@ -4,7 +4,7 @@ using CatalogApplication.Types._Common.ReplyTypes;
 using CatalogApplication.Types.Brands.Models;
 using CatalogApplication.Types.Categories;
 using CatalogApplication.Types.Products.Models;
-using CatalogApplication.Types.Stock;
+using CatalogApplication.Types.Warehouses;
 using Dapper;
 
 namespace CatalogApplication.Seeding;

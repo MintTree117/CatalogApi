@@ -28,7 +28,6 @@ internal static class ProductGenerator
                 (int,float) rating = PickRating( numSold, random );
                 Product p = new(
                     Guid.NewGuid(),
-                    primaryCategory.Id,
                     PickBrandId( sc, brands, brandCategories, random ),
                     PickIsFeatured( random ),
                     PickIsInStock( random ),
@@ -36,15 +35,15 @@ internal static class ProductGenerator
                     PickImage( primaryCategory, random ),
                     PickPrice( random, out decimal price ),
                     PickSalePrice( price, random ),
-                    numSold,
+                    rating.Item2,
                     rating.Item1,
-                    rating.Item2 );
+                    numSold );
                 List<ProductCategory> pc = 
                     GenerateProductCategories( p, sc );
                 ProductDescription pd =
                     GenerateProductDescription( p, random );
                 ProductXml px =
-                    GenerateProductXml( p, primaryCategories, random );
+                    GenerateProductXml( p, primaryCategory, random );
                 
                 products.Add( p );
                 productCategories.AddRange( pc );
@@ -63,7 +62,6 @@ internal static class ProductGenerator
     {
         DataTable table = new();
         table.Columns.Add( nameof( Product.Id ), typeof( Guid ) );
-        table.Columns.Add( nameof( Product.PrimaryCategoryId ), typeof( Guid ) );
         table.Columns.Add( nameof( Product.BrandId ), typeof( Guid ) );
         table.Columns.Add( nameof( Product.IsInStock ), typeof( bool ) );
         table.Columns.Add( nameof( Product.IsFeatured ), typeof( bool ) );
@@ -78,7 +76,6 @@ internal static class ProductGenerator
         foreach ( Product p in products ) {
             DataRow row = table.NewRow();
             row[nameof( Product.Id )] = p.Id;
-            row[nameof( Product.PrimaryCategoryId )] = p.PrimaryCategoryId;
             row[nameof( Product.BrandId )] = p.BrandId;
             row[nameof( Product.IsInStock )] = p.IsInStock;
             row[nameof( Product.IsFeatured )] = p.IsFeatured;
@@ -153,11 +150,10 @@ internal static class ProductGenerator
         string text = ProductSeedData.ProductDescriptions[index];
         return new ProductDescription( product.Id, text );
     }
-    static ProductXml GenerateProductXml( Product product, List<Category> primaryCategories, RandomUtility random )
+    static ProductXml GenerateProductXml( Product product, Category category, RandomUtility random )
     {
         // INITIALIZATION
-        Category c = primaryCategories.First( pc => pc.Id == product.PrimaryCategoryId );
-        Dictionary<string, string[]> specs = ProductXmlSeedData.ProductSpecsByCategory[c.Name];
+        Dictionary<string, string[]> specs = ProductXmlSeedData.ProductSpecsByCategory[category.Name];
         List<string> keys = specs.Keys.ToList();
         HashSet<int> specUsed = [];
         int numSpecs = random.GetRandomInt( keys.Count - 1 );

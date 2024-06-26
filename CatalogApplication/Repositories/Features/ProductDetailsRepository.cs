@@ -1,8 +1,7 @@
-using System.Data;
 using CatalogApplication.Database;
+using CatalogApplication.Types._Common.ReplyTypes;
 using CatalogApplication.Types.Products.Dtos;
 using Dapper;
-using Microsoft.Data.SqlClient;
 
 namespace CatalogApplication.Repositories.Features;
 
@@ -10,64 +9,58 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
 {
     readonly TimeSpan _cacheLifeMinutes = TimeSpan.FromMinutes( 5 );
     readonly object _cacheLock = new();
+    readonly Timer _timer;
     
-    Timer _timer;
     Dictionary<Guid, CacheEntry> _cache = [];
-    
-    // language=sql
-    const string sql =
-        """
-        SELECT CategoryId FROM CatalogApi.ProductCategories
-                  WHERE ProductId = @productId;
-        SELECT
-            p.Id, p.BrandId, p.Name, p.Image, p.IsFeatured, p.IsInStock, p.Price, p.SalePrice, p.NumberSold, p.NumberRatings, p.Rating,
-            pd.Description,
-            px.Xml
-        FROM CatalogApi.Products p
-            INNER JOIN CatalogApi.ProductDescriptions pd ON p.Id = pd.ProductId
-            INNER JOIN CatalogApi.ProductXmls px ON p.Id = px.ProductId
-            WHERE p.Id = @productId;
-        """;
     
     public ProductDetailsRepository( IDapperContext dapper, ILogger<ProductDetailsRepository> logger ) : base( dapper, logger )
     {
         _timer = new Timer( _ => Cleanup(), null, TimeSpan.Zero, _cacheLifeMinutes );
     }
-
-    internal async Task<ProductDto?> GetDetails( Guid productId )
+    internal async Task<ProductDetailsDto?> GetDetails( Guid productId )
     {
-        if (_cache.TryGetValue( productId, out CacheEntry entry ) && DateTime.Now - entry.Timestamp < _cacheLifeMinutes)
-            return entry.Dto; 
+        if (_cache.TryGetValue( productId, out CacheEntry entry ) && entry.Valid())
+            return entry.DetailsDto;
 
-        await FetchDetails( productId );
-        bool has = _cache.TryGetValue( productId, out entry );
-        return has
-            ? entry.Dto
+        var fetchReply = await FetchDetails( productId );
+        return fetchReply
+            ? fetchReply.Data
             : null;
     }
-    async Task<bool> FetchDetails( Guid productId )
+    
+    async Task<Reply<ProductDetailsDto>> FetchDetails( Guid productId )
     {
-        try {
-            await using SqlConnection connection = await Dapper.GetOpenConnection();
+        // language=sql
+        const string sql =
+            """
+            SELECT
+                p.Id, p.BrandId, p.IsFeatured, p.IsInStock, p.Name, p.Image, p.Price, p.SalePrice, p.Rating, p.NumberRatings,
+                (SELECT CategoryId FROM CatalogApi.ProductCategories WHERE ProductId = @productId) AS CategoryId,
+                pd.Description,
+                px.Xml
+            FROM CatalogApi.Products p
+                INNER JOIN CatalogApi.ProductDescriptions pd ON p.Id = pd.ProductId
+                INNER JOIN CatalogApi.ProductXmls px ON p.Id = px.ProductId
+                WHERE p.Id = @productId;
+            """;
+        
+        try 
+        {
+            DynamicParameters parameters = new();
+            parameters.Add( "productId", productId );
+            var reply = await Dapper.QueryFirstOrDefaultAsync<ProductDetailsDto>( sql, parameters );
+            
+            if (!reply)
+                return Reply<ProductDetailsDto>.NotFound();
 
-            if (connection.State != ConnectionState.Open) {
-                LogError( $"Invalid connection state: {connection.State}" );
-                return false;
-            }
-
-            DynamicParameters p = new();
-            p.Add( "productId", productId );
-            await using SqlMapper.GridReader reader = await connection.QueryMultipleAsync( sql, p, commandType: CommandType.Text );
-            IEnumerable<Guid> categories = await reader.ReadAsync<Guid>();
-            var details = await reader.ReadSingleAsync<ProductDto>();
-            ProductDto result = details with { Id = productId, CategoryIds = categories.ToList() };
-            CacheEntry entry = new( result, DateTime.Now );
-            _cache.TryAdd( result.Id, entry );
-            return true;
+            ProductDetailsDto details = reply.Data;
+            AddToCache( details );
+            return Reply<ProductDetailsDto>.Success( details );
         }
-        catch ( Exception e ) {
+        catch ( Exception e ) 
+        {
             LogException( e, $"Error while attempting to fetch product details from repository: {e.Message}" );
-            return false;
+            return Reply<ProductDetailsDto>.ServerError();
         }
     }
     void Cleanup()
@@ -77,7 +70,7 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
             foreach ( Guid id in _cache.Keys ) {
                 bool condition =
                     _cache.TryGetValue( id, out CacheEntry entry ) &&
-                    DateTime.Now - entry.Timestamp > _cacheLifeMinutes;
+                    DateTime.Now - entry.Expiry > _cacheLifeMinutes;
                 if (!condition)
                     toRemove.Add( id );
             }
@@ -91,8 +84,19 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
             _cache = newCache;
         }
     }
-    
+    void AddToCache( ProductDetailsDto dto )
+    {
+        CacheEntry entry = CacheEntry.ExpiresIn( dto, _cacheLifeMinutes );
+        _cache.TryAdd( dto.Id, entry );
+    }
+
     readonly record struct CacheEntry(
-        ProductDto Dto,
-        DateTime Timestamp );
+        ProductDetailsDto DetailsDto,
+        DateTime Expiry )
+    {
+        internal static CacheEntry ExpiresIn( ProductDetailsDto dto, TimeSpan timeSpan ) =>
+            new( dto, DateTime.Now + timeSpan );
+        internal bool Valid() =>
+            DateTime.Now < Expiry;
+    }
 }

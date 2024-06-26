@@ -1,6 +1,6 @@
 using System.Data;
 using CatalogApplication.Seeding.SeedData;
-using CatalogApplication.Types.Stock;
+using CatalogApplication.Types.Warehouses;
 
 namespace CatalogApplication.Seeding.Generators;
 

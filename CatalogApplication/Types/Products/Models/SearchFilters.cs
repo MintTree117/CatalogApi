@@ -1,4 +1,4 @@
-namespace CatalogApplication.Types.Search.Local;
+namespace CatalogApplication.Types.Products.Models;
 
 internal readonly record struct SearchFilters(
     string? SearchText,
@@ -8,7 +8,7 @@ internal readonly record struct SearchFilters(
     int? MaxPrice,
     bool? IsInStock,
     bool? IsFeatured,
-    bool IsOnSale,
+    bool? IsOnSale,
     int Page,
     int PageSize,
     int SortBy,
