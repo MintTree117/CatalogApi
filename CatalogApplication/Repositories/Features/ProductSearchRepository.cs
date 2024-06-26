@@ -6,7 +6,7 @@ using CatalogApplication.Types.Search.Local;
 using Dapper;
 using Microsoft.Data.SqlClient;
 
-namespace CatalogApplication.Repositories;
+namespace CatalogApplication.Repositories.Features;
 
 internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<ProductSearchRepository> logger ) 
     : BaseRepository<ProductSearchRepository>( dapper, logger )

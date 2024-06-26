@@ -3,12 +3,12 @@ using CatalogApplication.Types._Common.ReplyTypes;
 using CatalogApplication.Types.Products.Dtos;
 using CatalogApplication.Types.Products.Models;
 
-namespace CatalogApplication.Repositories;
+namespace CatalogApplication.Repositories.Features;
 
 internal sealed class ProductSpecialRepository( IDapperContext dapper, ILogger<ProductSearchRepository> logger )
     : BaseRepository<ProductSearchRepository>( dapper, logger )
 {
-    FrontPageProductsDto _frontPageCache;
+    MemoryCache<FrontPageProductsDto, ProductSpecialRepository> _memoryCache;
 
     internal async Task<Replies<Product>> GetFrontPageSpecials()
     {

@@ -1,4 +1,5 @@
 using CatalogApplication.Repositories;
+using CatalogApplication.Repositories.Features;
 using CatalogApplication.Types._Common.Geography;
 using CatalogApplication.Types.Categories;
 using CatalogApplication.Types.Products.Dtos;
@@ -26,7 +27,7 @@ internal static class Endpoints
     
     static async Task<IResult> GetCategories( CategoryRepository repository )
     {
-        List<Category> result = (await repository.GetCategories()).ToList();
+        List<Category> result = (await repository.GetCategories()).Data;
         return result.Count > 0
             ? Results.Ok( result )
             : Results.NotFound();

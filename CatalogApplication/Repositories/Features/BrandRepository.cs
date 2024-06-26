@@ -6,16 +6,14 @@ using CatalogApplication.Types.Brands.Models;
 using Dapper;
 using Microsoft.Data.SqlClient;
 
-namespace CatalogApplication.Repositories;
+namespace CatalogApplication.Repositories.Features;
 
 internal sealed class BrandRepository : BaseRepository<BrandRepository>
 {
     readonly MemoryCache<BrandsReply, BrandRepository> _memoryCache;
-    
-    public BrandRepository( IDapperContext dapper, ILogger<BrandRepository> logger ) : base( dapper, logger)
-    {
-        _memoryCache = new MemoryCache<BrandsReply, BrandRepository>( TimeSpan.FromHours( 1 ), FetchBrands, logger );
-    }
+
+    public BrandRepository( IDapperContext dapper, ILogger<BrandRepository> logger ) : base( dapper, logger )
+        => _memoryCache = new MemoryCache<BrandsReply, BrandRepository>( TimeSpan.FromHours( 1 ), FetchBrands, logger );
 
     internal async Task<Reply<BrandsReply>> GetBrands()
     {

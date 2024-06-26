@@ -4,7 +4,7 @@ using CatalogApplication.Types.Products.Dtos;
 using Dapper;
 using Microsoft.Data.SqlClient;
 
-namespace CatalogApplication.Repositories;
+namespace CatalogApplication.Repositories.Features;
 
 internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRepository>
 {

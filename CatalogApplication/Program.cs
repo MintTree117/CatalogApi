@@ -2,6 +2,7 @@ using CatalogApplication;
 using CatalogApplication.Database;
 using CatalogApplication.Middleware;
 using CatalogApplication.Repositories;
+using CatalogApplication.Repositories.Features;
 using CatalogApplication.Seeding;
 using CatalogApplication.Utilities;
 
