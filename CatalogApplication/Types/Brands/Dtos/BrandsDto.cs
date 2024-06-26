@@ -2,10 +2,10 @@ using CatalogApplication.Types.Brands.Models;
 
 namespace CatalogApplication.Types.Brands.Dtos;
 
-internal readonly record struct BrandsReply(
+internal readonly record struct BrandsDto(
     List<Brand> Brands,
-    List<BrandCategory> BrandCategories )
+    Dictionary<Guid, HashSet<Guid>> BrandCategories )
 {
-    internal static BrandsReply Empty() =>
+    internal static BrandsDto Empty() =>
         new( [], [] );
 }

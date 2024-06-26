@@ -10,19 +10,19 @@ namespace CatalogApplication.Repositories.Features;
 
 internal sealed class BrandRepository : BaseRepository<BrandRepository>
 {
-    readonly MemoryCache<BrandsReply, BrandRepository> _memoryCache;
+    readonly MemoryCache<BrandsDto, BrandRepository> _memoryCache;
 
     public BrandRepository( IDapperContext dapper, ILogger<BrandRepository> logger ) : base( dapper, logger )
-        => _memoryCache = new MemoryCache<BrandsReply, BrandRepository>( TimeSpan.FromHours( 1 ), FetchBrands, logger );
+        => _memoryCache = new MemoryCache<BrandsDto, BrandRepository>( TimeSpan.FromHours( 1 ), FetchBrands, logger );
 
-    internal async Task<Reply<BrandsReply>> GetBrands()
+    internal async Task<Reply<BrandsDto>> GetBrands()
     {
         var cacheReply = await _memoryCache.Get();
         return cacheReply
             ? cacheReply
             : await FetchBrands();
     }
-    async Task<Reply<BrandsReply>> FetchBrands()
+    async Task<Reply<BrandsDto>> FetchBrands()
     {
         const string sql =
             """
@@ -36,21 +36,33 @@ internal sealed class BrandRepository : BaseRepository<BrandRepository>
 
             if (connection.State != ConnectionState.Open) {
                 LogError( $"Invalid connection state: {connection.State}" );
-                return Reply<BrandsReply>.ServerError();
+                return Reply<BrandsDto>.ServerError();
             }
 
             await using SqlMapper.GridReader reader = await connection.QueryMultipleAsync( sql, commandType: CommandType.Text );
-            BrandsReply brands = new(
-                (await reader.ReadAsync<Brand>()).ToList(),
-                (await reader.ReadAsync<BrandCategory>()).ToList() );
+            
+            var brands = await reader.ReadAsync<Brand>();
+            var brandCategories = await reader.ReadAsync<BrandCategory>();
 
+            Dictionary<Guid, HashSet<Guid>> brandCategoriesDictionary = [];
+            foreach ( BrandCategory b in brandCategories )
+            {
+                if (!brandCategoriesDictionary.TryGetValue( b.CategoryId, out HashSet<Guid>? brandIds ))
+                {
+                    brandIds = [];
+                    brandCategoriesDictionary.Add( b.CategoryId, brandIds );
+                }
+                brandIds.Add( b.BrandId );
+            }
+            
             LogInformation( "Brands fetched from database." );
-            return Reply<BrandsReply>.Success( brands );
+            return Reply<BrandsDto>.Success( 
+                new BrandsDto( brands.ToList(), brandCategoriesDictionary ) );
         }
         catch ( Exception e ) 
         {
             LogException( e, $"Error while attempting to fetch brands from database: {e.Message}" );
-            return Reply<BrandsReply>.ServerError();
+            return Reply<BrandsDto>.ServerError();
         }
     }
 }

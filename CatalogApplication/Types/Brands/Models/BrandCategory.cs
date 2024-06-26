@@ -1,5 +1,5 @@
 namespace CatalogApplication.Types.Brands.Models;
 
-internal record BrandCategory(
+internal sealed record BrandCategory(
     Guid BrandId,
     Guid CategoryId );
