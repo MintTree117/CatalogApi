@@ -7,12 +7,12 @@ using Microsoft.Data.SqlClient;
 
 namespace CatalogApplication.Repositories.Features;
 
-internal sealed class ProductSpecialRepository : BaseRepository<ProductSpecialRepository>
+internal sealed class ProductSpecialsRepository : BaseRepository<ProductSpecialsRepository>
 {
-    readonly MemoryCache<ProductSpecialsDto, ProductSpecialRepository> _memoryCache;
+    readonly MemoryCache<ProductSpecialsDto, ProductSpecialsRepository> _memoryCache;
 
-    public ProductSpecialRepository( IDapperContext dapper, ILogger<ProductSpecialRepository> logger ) : base( dapper, logger )
-        => _memoryCache = new MemoryCache<ProductSpecialsDto, ProductSpecialRepository>( TimeSpan.FromHours( 1 ), FetchSpecials, logger );
+    public ProductSpecialsRepository( IDapperContext dapper, ILogger<ProductSpecialsRepository> logger ) : base( dapper, logger )
+        => _memoryCache = new MemoryCache<ProductSpecialsDto, ProductSpecialsRepository>( TimeSpan.FromHours( 1 ), FetchSpecials, logger );
     
     internal async Task<Reply<ProductSpecialsDto>> GetSpecials()
     {

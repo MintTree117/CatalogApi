@@ -41,7 +41,7 @@ internal static class Endpoints
                 await GetDetails( http, details, inventory ) );
 
         app.MapGet( "api/specials",
-            static async ( ProductSpecialRepository specials ) =>
+            static async ( ProductSpecialsRepository specials ) =>
                 await GetSpecials( specials ) );
     }
     
@@ -95,18 +95,19 @@ internal static class Endpoints
         );
         
         // SEARCH
-        SearchQueryReply? searchReply = await products.Search( filters );
-        if (searchReply is null)
-            return Results.NotFound();
+        var searchReply = await products.Search( filters );
+        if (!searchReply)
+            return Results.Problem( searchReply.GetMessage() );
+        var search = searchReply.Data;
         
         // SHIPPING
         AddressDto? deliveryAddress = filters.PosX is null || filters.PosY is null 
             ? null : new AddressDto( filters.PosX.Value, filters.PosY.Value );
-        List<Guid> productIds = searchReply.Value.Results.Select( static p => p.Id ).ToList();
+        List<Guid> productIds = search.Results.Select( static p => p.Id ).ToList();
         List<int> estimatesReply = await inventory.GetDeliveryEstimates( productIds, deliveryAddress );
         
         // FINISH
-        ProductsSearchDto dto = new( searchReply.Value.TotalMatches, searchReply.Value.Results, estimatesReply );
+        ProductsSearchDto dto = new( search.TotalMatches, search.Results, estimatesReply );
         return Results.Ok( dto );
     }
     static async Task<IResult> GetSuggestions( string searchText, ProductSearchRepository products )
@@ -157,9 +158,9 @@ internal static class Endpoints
         reply.Data.ShippingDays = shippingDays.FirstOrDefault();
         return Results.Ok( reply.Data );
     }
-    static async Task<IResult> GetSpecials( ProductSpecialRepository specials )
+    static async Task<IResult> GetSpecials( ProductSpecialsRepository specialses )
     {
-        var reply = await specials.GetSpecials();
+        var reply = await specialses.GetSpecials();
         return reply
             ? Results.Ok( reply.Data )
             : Results.NotFound();

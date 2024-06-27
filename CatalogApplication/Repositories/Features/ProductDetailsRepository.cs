@@ -38,9 +38,9 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
                 pd.Description,
                 px.Xml
                 FROM CatalogApi.Products p
+                INNER JOIN CatalogApi.ProductCategories c ON p.Id = c.ProductId
                 INNER JOIN CatalogApi.ProductDescriptions pd ON p.Id = pd.ProductId
                 INNER JOIN CatalogApi.ProductXmls px ON p.Id = px.ProductId
-                LEFT JOIN CatalogApi.ProductCategories c ON p.Id = c.ProductId
                 WHERE p.Id = @productId;
             """;
 
@@ -48,9 +48,9 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
         {
             await using var connection = await Dapper.GetOpenConnection();
             var productDictionary = new Dictionary<Guid, ProductDetailsDto?>();
-            await connection.QueryAsync<ProductDetailsDto, Guid, ProductDetailsDto>(
+            await connection.QueryAsync<ProductDetailsDto, Guid, string, string, ProductDetailsDto>(
                 sql,
-                ( product, categoryId ) => {
+                ( product, categoryId, description, xml ) => {
                     if (!productDictionary.TryGetValue( product.Id, out ProductDetailsDto? currentProduct ))
                     {
                         currentProduct = product;
@@ -58,10 +58,14 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
                         productDictionary.Add( currentProduct.Id, currentProduct );
                     }
                     currentProduct?.CategoryIds?.Add( categoryId );
+                    if (!string.IsNullOrWhiteSpace( description ) && currentProduct is not null )
+                        currentProduct.Description = description;
+                    if (!string.IsNullOrWhiteSpace( xml ) && currentProduct is not null )
+                        currentProduct.Xml = xml;
                     return product;
                 },
                 new { productId },
-                splitOn: "CategoryId"
+                splitOn: "CategoryId,Description,Xml"
             );
 
             var dto = productDictionary.Values.FirstOrDefault();

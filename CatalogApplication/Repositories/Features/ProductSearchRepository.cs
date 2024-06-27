@@ -39,7 +39,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     // language=sql
     const string PaginationSql = " OFFSET @offset ROWS FETCH NEXT @rows ROWS ONLY";
     
-    internal async Task<SearchQueryReply?> Search( SearchFilters filters )
+    internal async Task<Reply<SearchQueryReply>> Search( SearchFilters filters )
     {
         try 
         {
@@ -47,7 +47,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             if (connection.State != ConnectionState.Open) 
             {
                 LogError( $"Invalid connection state: {connection.State}" );
-                return null;
+                return Reply<SearchQueryReply>.ServerError();
             }
             
             SearchQueryBuilder builder = BuildCatalogSearchSql( filters );
@@ -57,12 +57,12 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
                 await multi.ReadSingleAsync<int>(),
                 (await multi.ReadAsync<ProductSummaryDto>()).ToList() );
 
-            return queryReply;
+            return Reply<SearchQueryReply>.Success( queryReply );
         }
         catch ( Exception e ) 
         {
             LogException( e, $"An exception occured while executing product search: {e.Message}" );
-            return null;
+            return Reply<SearchQueryReply>.ServerError();
         }
     }
     internal async Task<Replies<ProductDetailsDto>> View( List<Guid> productIds )
