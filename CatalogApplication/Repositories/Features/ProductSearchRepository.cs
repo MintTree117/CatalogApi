@@ -85,7 +85,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         }
     }
 
-    SearchQueryBuilder BuildCatalogSearchSql( SearchFilters filters )
+    static SearchQueryBuilder BuildCatalogSearchSql( SearchFilters filters )
     {
         SearchQueryBuilder searchQueryBuilder = new(
             new StringBuilder(),
@@ -108,7 +108,6 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             .OrderBy( filters.SortBy )
             .Paginate( filters.Page, filters.PageSize );
     }
-    
     static DataTable GetIdsDataTable( List<Guid> ids )
     {
         const string idColumn = "Id";
@@ -232,7 +231,6 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             // language=sql
             string orderBySql = $" ORDER BY {GetOrderType( orderBy )}";
             productBuilder.Append( orderBySql );
-            countBuilder.Append( orderBySql );
             parameters.Add( "orderBy", orderBy );
             return this;
         }

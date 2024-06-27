@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text;
 using System.Xml;
 using CatalogApplication.Seeding.SeedData;
 using CatalogApplication.Types.Brands.Models;
@@ -19,19 +20,22 @@ internal static class ProductGenerator
         List<ProductDescription> productDescriptions = [];
         List<ProductXml> productXmls = [];
 
-        foreach ( Category primaryCategory in primaryCategories ) {
-            for ( int i = 0; i < ProductsPerPrimaryCategory; i++ ) {
-                
+        foreach ( Category primaryCategory in primaryCategories ) 
+            for ( int i = 0; i < ProductsPerPrimaryCategory; i++ )
+            {
+                Guid productId = Guid.NewGuid();
                 List<Category> sc = 
                     PickRandomCategories( primaryCategory, secondaryCategories, random );
                 int numSold = PickNumberSold( random );
                 (int,float) rating = PickRating( numSold, random );
+                (ProductXml, XmlElement) px =
+                    GenerateProductXml( productId, primaryCategory, random );
                 Product p = new(
-                    Guid.NewGuid(),
+                    productId,
                     PickBrandId( sc, brands, brandCategories, random ),
                     PickIsFeatured( random ),
                     PickIsInStock( random ),
-                    PickName( primaryCategory, i ),
+                    PickName( primaryCategory, i, px.Item2 ),
                     PickImage( primaryCategory, random ),
                     PickPrice( random, out decimal price ),
                     PickSalePrice( price, random ),
@@ -42,15 +46,12 @@ internal static class ProductGenerator
                     GenerateProductCategories( p, sc );
                 ProductDescription pd =
                     GenerateProductDescription( p, random );
-                ProductXml px =
-                    GenerateProductXml( p, primaryCategory, random );
                 
                 products.Add( p );
                 productCategories.AddRange( pc );
                 productDescriptions.Add( pd );
-                productXmls.Add( px );
+                productXmls.Add( px.Item1 );
             }
-        }
         
         return new ProductSeedingModel( 
             products, 
@@ -63,29 +64,29 @@ internal static class ProductGenerator
         DataTable table = new();
         table.Columns.Add( nameof( Product.Id ), typeof( Guid ) );
         table.Columns.Add( nameof( Product.BrandId ), typeof( Guid ) );
-        table.Columns.Add( nameof( Product.IsInStock ), typeof( bool ) );
         table.Columns.Add( nameof( Product.IsFeatured ), typeof( bool ) );
+        table.Columns.Add( nameof( Product.IsInStock ), typeof( bool ) );
         table.Columns.Add( nameof( Product.Name ), typeof( string ) );
         table.Columns.Add( nameof( Product.Image ), typeof( string ) );
         table.Columns.Add( nameof( Product.Price ), typeof( decimal ) );
         table.Columns.Add( nameof( Product.SalePrice ), typeof( decimal ) );
-        table.Columns.Add( nameof( Product.NumberSold ), typeof( int ) );
-        table.Columns.Add( nameof( Product.NumberRatings ), typeof( int ) );
         table.Columns.Add( nameof( Product.Rating ), typeof( float ) );
+        table.Columns.Add( nameof( Product.NumberRatings ), typeof( int ) );
+        table.Columns.Add( nameof( Product.NumberSold ), typeof( int ) );
         
         foreach ( Product p in products ) {
             DataRow row = table.NewRow();
             row[nameof( Product.Id )] = p.Id;
             row[nameof( Product.BrandId )] = p.BrandId;
-            row[nameof( Product.IsInStock )] = p.IsInStock;
             row[nameof( Product.IsFeatured )] = p.IsFeatured;
+            row[nameof( Product.IsInStock )] = p.IsInStock;
             row[nameof( Product.Name )] = p.Name;
             row[nameof( Product.Image )] = p.Image;
             row[nameof( Product.Price )] = p.Price;
             row[nameof( Product.SalePrice )] = p.SalePrice;
-            row[nameof( Product.NumberSold )] = p.NumberSold;
-            row[nameof( Product.NumberRatings )] = p.NumberRatings;
             row[nameof( Product.Rating )] = p.Rating;
+            row[nameof( Product.NumberRatings )] = p.NumberRatings;
+            row[nameof( Product.NumberSold )] = p.NumberSold;
             table.Rows.Add( row );
         }
 
@@ -150,7 +151,7 @@ internal static class ProductGenerator
         string text = ProductSeedData.ProductDescriptions[index];
         return new ProductDescription( product.Id, text );
     }
-    static ProductXml GenerateProductXml( Product product, Category category, RandomUtility random )
+    static (ProductXml, XmlElement) GenerateProductXml( Guid productId, Category category, RandomUtility random )
     {
         // INITIALIZATION
         Dictionary<string, string[]> specs = ProductXmlSeedData.ProductSpecsByCategory[category.Name];
@@ -211,7 +212,7 @@ internal static class ProductGenerator
             }
             root.AppendChild( specElement );
         }
-        return new ProductXml( product.Id, xmlDoc.InnerXml );
+        return (new ProductXml( productId, xmlDoc.InnerXml ), root);
     }
 
     static List<Category> PickRandomCategories( Category primaryCategory, Dictionary<Guid, List<Category>> secondaryCategories, RandomUtility random )
@@ -262,11 +263,33 @@ internal static class ProductGenerator
         bool value = random.GetRandomBool( 0.2 );
         return value;
     }
-    static string PickName( Category primaryCategory, int iteration )
+    static string PickName( Category primaryCategory, int iteration, XmlElement root )
     {
-        string pName = ProductSeedData.ProductNamesByPrimaryCategory[primaryCategory.Name];
-        string name = $"{pName} {iteration}";
-        return name;
+        const int NameCharacterLength = 256;
+        StringBuilder builder = new();
+        builder.Append( $"{ProductSeedData.ProductNamesByPrimaryCategory[primaryCategory.Name]} {iteration}" );
+        XmlNodeList elements = root.ChildNodes;
+        foreach ( XmlNode n in elements )
+        {
+            if (n.NodeType != XmlNodeType.Element) 
+                continue;
+
+            XmlElement element = (XmlElement) n;
+            string text = element.InnerText.Trim(); // Trim leading and trailing whitespace
+            if (string.IsNullOrWhiteSpace( text ))
+                continue;
+            if (builder.Length + text.Length + 1 >= NameCharacterLength)
+                break;
+            if (builder.Length > 0)
+                builder.Append( " " );
+            builder.Append( text );
+        }
+
+        string result = builder.ToString();
+        result = result.Trim();
+        if (result.Length >= NameCharacterLength)
+            result = result.Substring( 0, NameCharacterLength );
+        return result;
     }
     static string PickImage( Category primaryCategory, RandomUtility random )
     {

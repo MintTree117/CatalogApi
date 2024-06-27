@@ -51,7 +51,7 @@ internal static class Endpoints
     {
         var reply = await repository.GetBrands();
         return reply
-            ? Results.Ok( reply )
+            ? Results.Ok( reply.Data )
             : Results.NotFound();
     }
     static async Task<IResult> GetEstimates( HttpContext http, InventoryRepository inventory )
@@ -149,7 +149,7 @@ internal static class Endpoints
     {
         var reply = await specials.GetSpecials();
         return reply
-            ? Results.Ok( reply )
+            ? Results.Ok( reply.Data )
             : Results.NotFound();
     }
 }

@@ -25,9 +25,9 @@ internal sealed class ProductSpecialRepository : BaseRepository<ProductSpecialRe
     {
         const string sql =
             """
-            SELECT * FROM CatalogApi.Products WHERE IsFeatured = 1 ORDER BY NumberSold DESC OFFSET 0 FETCH NEXT 10 ROWS ONLY;
-            SELECT * FROM CatalogApi.Products WHERE SalePrice > 0 ORDER BY NumberSold DESC OFFSET 0 FETCH NEXT 10 ROWS ONLY;
-            SELECT * FROM CatalogApi.Products ORDER BY NumberSold DESC OFFSET 0 FETCH NEXT 10 ROWS ONLY;
+            SELECT * FROM CatalogApi.Products WHERE IsFeatured = 1 ORDER BY NumberSold DESC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;
+            SELECT * FROM CatalogApi.Products WHERE SalePrice > 0 ORDER BY NumberSold DESC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;
+            SELECT * FROM CatalogApi.Products ORDER BY NumberSold DESC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;
             """;
 
         try
@@ -42,9 +42,9 @@ internal sealed class ProductSpecialRepository : BaseRepository<ProductSpecialRe
 
             await using SqlMapper.GridReader multi = await connection.QueryMultipleAsync( sql, commandType: CommandType.Text );
             ProductSpecialsDto productSpecials = new(
-                (await multi.ReadAsync<ProductDetailsDto>()).ToList(),
-                (await multi.ReadAsync<ProductDetailsDto>()).ToList(),
-                (await multi.ReadAsync<ProductDetailsDto>()).ToList() );
+                (await multi.ReadAsync<ProductSummaryDto>()).ToList(),
+                (await multi.ReadAsync<ProductSummaryDto>()).ToList(),
+                (await multi.ReadAsync<ProductSummaryDto>()).ToList() );
 
             return Reply<ProductSpecialsDto>.Success( productSpecials );
         }

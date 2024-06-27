@@ -224,8 +224,8 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
     {
         const string sql =
             """
-            INSERT INTO CatalogApi.Products (Id, PrimaryCategoryId, BrandId, IsInStock, IsFeatured, [Name], Image, Price, SalePrice, NumberSold, NumberRatings, Rating )
-            SELECT Id, PrimaryCategoryId, BrandId, IsInStock, IsFeatured, [Name], Image, Price, SalePrice, NumberSold, NumberRatings, Rating
+            INSERT INTO CatalogApi.Products (Id, BrandId, IsFeatured, IsInStock, [Name], Image, Price, SalePrice, Rating, NumberRatings, NumberSold  )
+            SELECT Id, BrandId, IsFeatured, IsInStock, [Name], Image, Price, SalePrice, Rating, NumberRatings, NumberSold
             FROM @ProductsTvp
             """;
         

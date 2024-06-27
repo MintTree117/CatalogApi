@@ -3,11 +3,11 @@ namespace CatalogApplication.Types.Products.Dtos;
 internal readonly record struct ProductSummaryDto(
     Guid Id,
     Guid BrandId,
-    string Name,
-    string Image,
     bool IsFeatured,
     bool IsInStock,
+    string Name,
+    string Image,
     decimal Price,
     decimal SalePrice,
-    int NumberRatings,
-    float Rating );
+    float Rating,
+    int NumberRatings );
