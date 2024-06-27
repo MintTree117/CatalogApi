@@ -39,25 +39,6 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     // language=sql
     const string PaginationSql = " OFFSET @offset ROWS FETCH NEXT @rows ROWS ONLY";
     
-    internal async Task<Replies<ProductDetailsDto>> View( List<Guid> productIds )
-    {
-        // language=sql
-        const string viewSql = "SELECT p.* FROM CatalogApi.Products p WHERE p.Id IN (SELECT Id FROM @productIds)";
-
-        try
-        {
-            var idsTable = GetIdsDataTable( productIds );
-            var parameters = new DynamicParameters();
-            parameters.Add( "productIds", idsTable.AsTableValuedParameter( "CatalogApi.ProductIdsTvp" ) );
-            var reply = await Dapper.QueryAsync<ProductDetailsDto>( viewSql, parameters );
-            return reply;
-        }
-        catch ( Exception e )
-        {
-            Console.WriteLine( e );
-            throw;
-        }
-    }
     internal async Task<SearchQueryReply?> Search( SearchFilters filters )
     {
         try 
@@ -84,7 +65,26 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             return null;
         }
     }
-
+    internal async Task<Replies<ProductDetailsDto>> View( List<Guid> productIds )
+    {
+        // language=sql
+        const string viewSql = "SELECT p.* FROM CatalogApi.Products p WHERE p.Id IN (SELECT Id FROM @productIds)";
+        var idsTable = GetIdsDataTable( productIds );
+        var parameters = new DynamicParameters();
+        parameters.Add( "productIds", idsTable.AsTableValuedParameter( "CatalogApi.ProductIdsTvp" ) );
+        var reply = await Dapper.QueryAsync<ProductDetailsDto>( viewSql, parameters );
+        return reply;
+    }
+    internal async Task<Replies<ProductSuggestionDto>> Suggestions( string searchText )
+    {
+        // language=sql
+        const string sql = "SELECT Id, [Name] FROM CatalogApi.Products WHERE [Name] LIKE '%' + @searchText + '%'";
+        var parameters = new DynamicParameters();
+        parameters.Add( "searchText", searchText );
+        var replies = await Dapper.QueryAsync<ProductSuggestionDto>( sql, parameters );
+        return replies;
+    }
+    
     static SearchQueryBuilder BuildCatalogSearchSql( SearchFilters filters )
     {
         SearchQueryBuilder searchQueryBuilder = new(

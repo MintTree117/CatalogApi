@@ -4,6 +4,7 @@ using CatalogApplication.Types.Categories;
 using CatalogApplication.Types.Products.Dtos;
 using CatalogApplication.Types.Products.Models;
 using CatalogApplication.Utilities;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CatalogApplication;
 
@@ -19,13 +20,17 @@ internal static class Endpoints
             static async ( BrandRepository repository ) =>
                 await GetBrands( repository ) );
         
-        app.MapGet( "api/view",
-            static async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
-                await GetView( http, products, inventory ) );
-        
         app.MapGet( "api/search",
             static async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
                 await GetSearch( http, products, inventory ) );
+
+        app.MapGet( "api/suggestions",
+            static async ( [FromQuery] string searchText, ProductSearchRepository products ) =>
+                await GetSuggestions( searchText, products ) );
+        
+        app.MapGet( "api/view",
+            static async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
+                await GetView( http, products, inventory ) );
         
         app.MapGet( "api/estimates",
             static async ( HttpContext http, InventoryRepository inventory ) =>
@@ -69,27 +74,6 @@ internal static class Endpoints
         var estimates = await inventory.GetDeliveryEstimates( productIds, new AddressDto( posX.Value, posX.Value ) );
         return Results.Ok( estimates );
     }
-    static async Task<IResult> GetView( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
-    {
-        IQueryCollection query = http.Request.Query;
-        var productIds = Utils.ParseGuidList( query["ProductIds"] );
-        var posX = Utils.ParseInt( query["PosX"] );
-        var posY = Utils.ParseInt( query["PosY"] );
-
-        if (productIds is null)
-            return Results.BadRequest( "Invalid Product Ids." );
-
-        var searchReply = await products.View( productIds );
-        if (!searchReply)
-            return Results.NotFound();
-
-        AddressDto? address = null;
-        if (posX is not null && posY is not null)
-            address = new AddressDto( posX.Value, posX.Value );
-
-        var estimates = await inventory.GetDeliveryEstimates( productIds, address );
-        return Results.Ok( new ProductsDto( searchReply.Enumerable.ToList(), estimates ) );
-    }
     static async Task<IResult> GetSearch( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
     {
         // FILTERS
@@ -124,6 +108,34 @@ internal static class Endpoints
         // FINISH
         ProductsSearchDto dto = new( searchReply.Value.TotalMatches, searchReply.Value.Results, estimatesReply );
         return Results.Ok( dto );
+    }
+    static async Task<IResult> GetSuggestions( string searchText, ProductSearchRepository products )
+    {
+        var reply = await products.Suggestions( searchText );
+        return reply
+            ? Results.Ok( reply.Enumerable.ToList() )
+            : Results.NotFound( reply.GetMessage() );
+    }
+    static async Task<IResult> GetView( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
+    {
+        IQueryCollection query = http.Request.Query;
+        var productIds = Utils.ParseGuidList( query["ProductIds"] );
+        var posX = Utils.ParseInt( query["PosX"] );
+        var posY = Utils.ParseInt( query["PosY"] );
+
+        if (productIds is null)
+            return Results.BadRequest( "Invalid Product Ids." );
+
+        var searchReply = await products.View( productIds );
+        if (!searchReply)
+            return Results.NotFound();
+
+        AddressDto? address = null;
+        if (posX is not null && posY is not null)
+            address = new AddressDto( posX.Value, posX.Value );
+
+        var estimates = await inventory.GetDeliveryEstimates( productIds, address );
+        return Results.Ok( new ProductsDto( searchReply.Enumerable.ToList(), estimates ) );
     }
     static async Task<IResult> GetDetails( HttpContext http, ProductDetailsRepository repository, InventoryRepository inventory )
     {
