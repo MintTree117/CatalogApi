@@ -147,15 +147,15 @@ internal static class Endpoints
         if (productId is null)
             return Results.BadRequest( "Invalid Product Id." );
 
-        ProductDetailsDto? result = await repository.GetDetails( productId.Value );
-        
-        if (result is null || posX is null || posY is null)
-            return result is not null
-                ? Results.Ok( result )
-                : Results.NotFound();
+        var reply = await repository.GetDetails( productId.Value );
+        if (!reply || posX is null || posY is null)
+            return reply
+                ? Results.Ok( reply.Data )
+                : Results.Problem( reply.GetMessage() );
 
-        var shippingDays = await inventory.GetDeliveryEstimates( [result.Value.Id], new AddressDto( posX.Value, posY.Value ) );
-        return Results.Ok( result.Value with { ShippingDays = shippingDays.FirstOrDefault() } );
+        var shippingDays = await inventory.GetDeliveryEstimates( [reply.Data.Id], new AddressDto( posX.Value, posY.Value ) );
+        reply.Data.ShippingDays = shippingDays.FirstOrDefault();
+        return Results.Ok( reply.Data );
     }
     static async Task<IResult> GetSpecials( ProductSpecialRepository specials )
     {

@@ -1,7 +1,6 @@
 using CatalogApplication;
 using CatalogApplication.Database;
 using CatalogApplication.Middleware;
-using CatalogApplication.Repositories;
 using CatalogApplication.Repositories.Features;
 using CatalogApplication.Seeding;
 using CatalogApplication.Utilities;
@@ -11,8 +10,7 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder( args );
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
-EndpointLogger.Logger = builder.Services
-    .BuildServiceProvider()
+EndpointLogger.Logger = builder.Services.BuildServiceProvider()
     .GetRequiredService<ILoggerFactory>()
     .CreateLogger<EndpointLogger>();
 builder.Services.AddEndpointsApiExplorer();

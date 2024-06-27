@@ -9,6 +9,7 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
 {
     readonly TimeSpan _cacheLifeMinutes = TimeSpan.FromMinutes( 5 );
     readonly object _cacheLock = new();
+    // ReSharper disable once NotAccessedField.Local
     readonly Timer _timer;
     
     Dictionary<Guid, CacheEntry> _cache = [];
@@ -17,47 +18,58 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
     {
         _timer = new Timer( _ => Cleanup(), null, TimeSpan.Zero, _cacheLifeMinutes );
     }
-    internal async Task<ProductDetailsDto?> GetDetails( Guid productId )
+    internal async Task<Reply<ProductDetailsDto>> GetDetails( Guid productId )
     {
         if (_cache.TryGetValue( productId, out CacheEntry entry ) && entry.Valid())
-            return entry.DetailsDto;
+            return Reply<ProductDetailsDto>.Success( entry.DetailsDto );
 
         var fetchReply = await FetchDetails( productId );
         return fetchReply
-            ? fetchReply.Data
-            : null;
+            ? Reply<ProductDetailsDto>.Success( fetchReply.Data )
+            : Reply<ProductDetailsDto>.Failure( fetchReply.GetMessage() );
     }
-    
     async Task<Reply<ProductDetailsDto>> FetchDetails( Guid productId )
     {
-        // language=sql
         const string sql =
             """
-            SELECT
+                SELECT
                 p.Id, p.BrandId, p.IsFeatured, p.IsInStock, p.Name, p.Image, p.Price, p.SalePrice, p.Rating, p.NumberRatings,
-                (SELECT CategoryId FROM CatalogApi.ProductCategories WHERE ProductId = @productId) AS CategoryId,
+                c.CategoryId,
                 pd.Description,
                 px.Xml
-            FROM CatalogApi.Products p
+                FROM CatalogApi.Products p
                 INNER JOIN CatalogApi.ProductDescriptions pd ON p.Id = pd.ProductId
                 INNER JOIN CatalogApi.ProductXmls px ON p.Id = px.ProductId
+                LEFT JOIN CatalogApi.ProductCategories c ON p.Id = c.ProductId
                 WHERE p.Id = @productId;
             """;
-        
-        try 
-        {
-            DynamicParameters parameters = new();
-            parameters.Add( "productId", productId );
-            var reply = await Dapper.QueryFirstOrDefaultAsync<ProductDetailsDto>( sql, parameters );
-            
-            if (!reply)
-                return Reply<ProductDetailsDto>.NotFound();
 
-            ProductDetailsDto details = reply.Data;
-            AddToCache( details );
-            return Reply<ProductDetailsDto>.Success( details );
+        try
+        {
+            await using var connection = await Dapper.GetOpenConnection();
+            var productDictionary = new Dictionary<Guid, ProductDetailsDto?>();
+            await connection.QueryAsync<ProductDetailsDto, Guid, ProductDetailsDto>(
+                sql,
+                ( product, categoryId ) => {
+                    if (!productDictionary.TryGetValue( product.Id, out ProductDetailsDto? currentProduct ))
+                    {
+                        currentProduct = product;
+                        currentProduct.CategoryIds = new List<Guid>();
+                        productDictionary.Add( currentProduct.Id, currentProduct );
+                    }
+                    currentProduct?.CategoryIds?.Add( categoryId );
+                    return product;
+                },
+                new { productId },
+                splitOn: "CategoryId"
+            );
+
+            var dto = productDictionary.Values.FirstOrDefault();
+            return dto is not null
+                ? Reply<ProductDetailsDto>.Success( dto )
+                : Reply<ProductDetailsDto>.NotFound();
         }
-        catch ( Exception e ) 
+        catch ( Exception e )
         {
             LogException( e, $"Error while attempting to fetch product details from repository: {e.Message}" );
             return Reply<ProductDetailsDto>.ServerError();
