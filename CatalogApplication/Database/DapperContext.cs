@@ -39,7 +39,6 @@ internal sealed class DapperContext : IDapperContext
             return new SqlConnection( string.Empty );
         }
 
-
         SqlConnection connection = new( _connectionString );
         await connection.OpenAsync();
         return connection;

@@ -9,6 +9,14 @@ namespace CatalogApplication;
 
 internal static class Endpoints
 {
+    const string ProductIds = "ProductIds";
+    const string PosX = "PosX";
+    const string PosY = "PosY";
+    const string Page = "Page";
+    const string PageSize = "PageSize";
+    const string SortBy = "SortBy";
+    const int FallBackPageSize = 5;
+    
     internal static void MapEndpoints( this IEndpointRouteBuilder app )
     {
         app.MapGet( "api/categories",
@@ -47,10 +55,6 @@ internal static class Endpoints
             static async ( HttpContext http, ProductDetailsRepository details, InventoryRepository inventory ) =>
                 await GetDetails( http, details, inventory ) );
     }
-
-    const string ProductIds = "ProductIds";
-    const string PosX = "PosX";
-    const string PosY = "PosY";
     
     static async Task<IResult> GetCategories( CategoryRepository repository )
     {
@@ -121,9 +125,9 @@ internal static class Endpoints
             Utils.ParseBool( query["IsFeatured"] ),
             Utils.ParseBool( query["IsInStock"] ),
             Utils.ParseBool( query["IsOnSale"] ) ?? false,
-            Utils.ParseInt( query["Page"] ) ?? 0,
-            Utils.ParseInt( query["PageSize"] ) ?? 5,
-            Utils.ParseInt( query["SortBy"] ) ?? 0,
+            Utils.ParseInt( query[Page] ) ?? 0,
+            Utils.ParseInt( query[PageSize] ) ?? FallBackPageSize,
+            Utils.ParseInt( query[SortBy] ) ?? 0,
             Utils.ParseInt( query[PosX] ),
             Utils.ParseInt( query[PosY] )
         );

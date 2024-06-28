@@ -7,6 +7,11 @@ internal sealed class EndpointLogger // Static Singleton
     const string Padding = "------------------";
     
     internal static ILogger<EndpointLogger> Logger { get; set; } = null!;
+
+    public static void InitializeLogger( ILoggerFactory loggerFactory )
+    {
+        Logger = loggerFactory.CreateLogger<EndpointLogger>();
+    }
     
     internal static void LogInformation( string message ) =>
         Logger.LogInformation( $"{Padding} {message}" );

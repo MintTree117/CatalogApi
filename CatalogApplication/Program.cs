@@ -10,9 +10,6 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder( args );
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
-EndpointLogger.Logger = builder.Services.BuildServiceProvider()
-    .GetRequiredService<ILoggerFactory>()
-    .CreateLogger<EndpointLogger>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddCors( static options => {
@@ -23,7 +20,7 @@ builder.Services.AddCors( static options => {
         .AllowCredentials() );
 } );
 builder.Services.AddHttpClient();
-builder.Services.AddSingleton<IDapperContext, DapperContext>();
+builder.Services.AddScoped<IDapperContext, DapperContext>();
 builder.Services.AddSingleton<BrandRepository>();
 builder.Services.AddSingleton<CategoryRepository>();
 builder.Services.AddSingleton<InventoryRepository>();
@@ -33,6 +30,8 @@ builder.Services.AddSingleton<ProductSpecialsRepository>();
 builder.Services.AddSingleton<SeedingService>();
 
 WebApplication app = builder.Build();
+
+EndpointLogger.InitializeLogger( app.Services.GetRequiredService<ILoggerFactory>() );
 
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 app.UseMiddleware<RequestResponseLoggingMiddleware>();
