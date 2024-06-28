@@ -109,7 +109,7 @@ internal static class Endpoints
     {
         var reply = await products.SearchSimilar( productId );
         return reply
-            ? Results.Ok( reply )
+            ? Results.Ok( reply.Enumerable.ToList() )
             : Results.NotFound( reply.GetMessage() );
     }
     static async Task<IResult> SearchFull( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )

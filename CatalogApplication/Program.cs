@@ -20,7 +20,7 @@ builder.Services.AddCors( static options => {
         .AllowCredentials() );
 } );
 builder.Services.AddHttpClient();
-builder.Services.AddScoped<IDapperContext, DapperContext>();
+builder.Services.AddSingleton<IDapperContext, DapperContext>();
 builder.Services.AddSingleton<BrandRepository>();
 builder.Services.AddSingleton<CategoryRepository>();
 builder.Services.AddSingleton<InventoryRepository>();
