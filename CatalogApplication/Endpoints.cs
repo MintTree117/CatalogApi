@@ -158,9 +158,9 @@ internal static class Endpoints
         reply.Data.ShippingDays = shippingDays.FirstOrDefault();
         return Results.Ok( reply.Data );
     }
-    static async Task<IResult> GetSpecials( ProductSpecialsRepository specialses )
+    static async Task<IResult> GetSpecials( ProductSpecialsRepository specials )
     {
-        var reply = await specialses.GetSpecials();
+        var reply = await specials.GetSpecials();
         return reply
             ? Results.Ok( reply.Data )
             : Results.NotFound();

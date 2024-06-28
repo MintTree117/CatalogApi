@@ -12,8 +12,7 @@ namespace CatalogApplication.Repositories.Features;
 internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<ProductSearchRepository> logger ) 
     : BaseRepository<ProductSearchRepository>( dapper, logger )
 {
-    // language=sql
-    //const string SqlTextSearch = " EXISTS (SELECT 1 FROM STRING_SPLIT(@SearchText, ' ') AS SearchWords WHERE p.Name LIKE '%' + SearchWords.value + '%' )";
+    
     // language=sql
     const string SqlTextSearchNewCross =
         """
@@ -47,7 +46,6 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             }
             
             SearchQueryBuilder builder = BuildCatalogSearchSql( filters );
-            Logger.LogError( builder.GetSql() );
             await using SqlMapper.GridReader multi = await connection.QueryMultipleAsync( builder.GetSql(), builder.parameters, commandType: CommandType.Text );
             
             SearchQueryReply queryReply = new(
@@ -62,14 +60,14 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             return Reply<SearchQueryReply>.ServerError();
         }
     }
-    internal async Task<Replies<ProductDetailsDto>> View( List<Guid> productIds )
+    internal async Task<Replies<ProductSummaryDto>> View( List<Guid> productIds )
     {
         // language=sql
         const string viewSql = "SELECT p.* FROM CatalogApi.Products p WHERE p.Id IN (SELECT Id FROM @productIds)";
         var idsTable = GetIdsDataTable( productIds );
         var parameters = new DynamicParameters();
         parameters.Add( "productIds", idsTable.AsTableValuedParameter( "CatalogApi.ProductIdsTvp" ) );
-        var reply = await Dapper.QueryAsync<ProductDetailsDto>( viewSql, parameters );
+        var reply = await Dapper.QueryAsync<ProductSummaryDto>( viewSql, parameters );
         return reply;
     }
     internal async Task<Replies<ProductSuggestionDto>> Suggestions( string searchText )
