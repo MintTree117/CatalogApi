@@ -26,16 +26,17 @@ internal static class ProductGenerator
                 Guid productId = Guid.NewGuid();
                 List<Category> sc = 
                     PickRandomCategories( primaryCategory, secondaryCategories, random );
+                Brand brand = PickBrand( sc, brands, brandCategories, random );
                 int numSold = PickNumberSold( random );
                 (int,float) rating = PickRating( numSold, random );
                 (ProductXml, XmlElement) px =
                     GenerateProductXml( productId, primaryCategory, random );
                 Product p = new(
                     productId,
-                    PickBrandId( sc, brands, brandCategories, random ),
+                    brand.Id,
                     PickIsFeatured( random ),
                     PickIsInStock( random ),
-                    PickName( primaryCategory, i, px.Item2 ),
+                    PickName( brand, primaryCategory, i, px.Item2 ),
                     PickImage( primaryCategory, random ),
                     PickPrice( random, out decimal price ),
                     PickSalePrice( price, random ),
@@ -235,7 +236,7 @@ internal static class ProductGenerator
         selectedCategories.AddRange( selectedSecondary );
         return selectedCategories;
     }
-    static Guid PickBrandId( List<Category> categories, List<Brand> brands, List<BrandCategory> brandCategories, RandomUtility random )
+    static Brand PickBrand( List<Category> categories, List<Brand> brands, List<BrandCategory> brandCategories, RandomUtility random )
     {
         HashSet<int> tried = [];
         
@@ -248,7 +249,7 @@ internal static class ProductGenerator
             IEnumerable<BrandCategory> bc = brandCategories.Where( b => b.BrandId == brand.Id );
             foreach ( BrandCategory b in bc )
                 if (categories.Any( c => b.CategoryId == c.Id ))
-                    return brand.Id;
+                    return brand;
         }
 
         throw new Exception( "Failed to pick a BrandId for product during seeding: PickBrandId() in ProductSeeder()." );
@@ -263,11 +264,11 @@ internal static class ProductGenerator
         bool value = random.GetRandomBool( 0.2 );
         return value;
     }
-    static string PickName( Category primaryCategory, int iteration, XmlElement root )
+    static string PickName( Brand brand, Category primaryCategory, int iteration, XmlElement root )
     {
         const int NameCharacterLength = 256;
         StringBuilder builder = new();
-        builder.Append( $"{ProductSeedData.ProductNamesByPrimaryCategory[primaryCategory.Name]} {iteration}" );
+        builder.Append( $"{brand.Name} {ProductSeedData.ProductNamesByPrimaryCategory[primaryCategory.Name]} {iteration}" );
         XmlNodeList elements = root.ChildNodes;
         foreach ( XmlNode n in elements )
         {
@@ -275,14 +276,25 @@ internal static class ProductGenerator
                 continue;
 
             XmlElement element = (XmlElement) n;
-            string text = element.InnerText.Trim(); // Trim leading and trailing whitespace
-            if (string.IsNullOrWhiteSpace( text ))
-                continue;
-            if (builder.Length + text.Length + 1 >= NameCharacterLength)
-                break;
-            if (builder.Length > 0)
-                builder.Append( " " );
-            builder.Append( text );
+            var split = element.InnerText
+                .Trim()
+                .Split( "," );
+            
+            const int MaxPer = 3;
+            int count = 0;
+            foreach ( string s in split )
+            {
+                if (count >= MaxPer)
+                    break;
+                if (string.IsNullOrWhiteSpace( s ))
+                    continue;
+                if (builder.Length + s.Length + 1 >= NameCharacterLength)
+                    break;
+                builder.Append( s );
+                if (builder.Length > 0)
+                    builder.Append( " " );
+                count++;
+            }
         }
 
         string result = builder.ToString();
