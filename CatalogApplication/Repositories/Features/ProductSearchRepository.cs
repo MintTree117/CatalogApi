@@ -13,7 +13,27 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     : BaseRepository<ProductSearchRepository>( dapper, logger )
 {
     // language=sql
-    const string SqlTextSearch = " EXISTS (SELECT 1 FROM STRING_SPLIT(@SearchText, ' ') AS SearchWords WHERE p.Name LIKE '%' + SearchWords.value + '%' )";
+    //const string SqlTextSearch = " EXISTS (SELECT 1 FROM STRING_SPLIT(@SearchText, ' ') AS SearchWords WHERE p.Name LIKE '%' + SearchWords.value + '%' )";
+    // language=sql
+    const string SqlTextSearchNewCross =
+        """
+         CROSS APPLY (
+            SELECT value AS ProductWord
+                FROM STRING_SPLIT(p.Name, ' ')
+            UNION ALL
+            SELECT value
+                FROM STRING_SPLIT(p.Name, ',')
+        ) AS SplitProduct
+        """;
+    // language=sql
+    const string SqlTextSearchNewFilter =
+        """
+         EXISTS (
+            SELECT 1
+            FROM STRING_SPLIT(@SearchText, ' ') AS SearchWords
+            WHERE SplitProduct.ProductWord LIKE '%' + SearchWords.value + '%'
+        )
+        """;
     
     internal async Task<Reply<SearchQueryReply>> Search( SearchFilters filters )
     {
@@ -27,6 +47,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             }
             
             SearchQueryBuilder builder = BuildCatalogSearchSql( filters );
+            Logger.LogError( builder.GetSql() );
             await using SqlMapper.GridReader multi = await connection.QueryMultipleAsync( builder.GetSql(), builder.parameters, commandType: CommandType.Text );
             
             SearchQueryReply queryReply = new(
@@ -54,7 +75,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     internal async Task<Replies<ProductSuggestionDto>> Suggestions( string searchText )
     {
         // language=sql
-        const string sql = $"SELECT TOP 10 p.Id, p.Name FROM CatalogApi.Products p WHERE {SqlTextSearch}";
+        const string sql = $"SELECT TOP 10 p.Id, p.Name FROM CatalogApi.Products p {SqlTextSearchNewCross} WHERE {SqlTextSearchNewFilter}";
         var parameters = new DynamicParameters();
         parameters.Add( "searchText", searchText );
         var replies = await Dapper.QueryAsync<ProductSuggestionDto>( sql, parameters );
@@ -72,6 +93,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             .SelectProducts()
             .SelectCount()
             .JoinCategories( filters.CategoryId )
+            .CrossSearchText( filters.SearchText )
             .StartFiltering()
             .FilterByIsFeatured( filters.IsFeatured.HasValue )
             .FilterByIsInStock( filters.IsInStock.HasValue )
@@ -121,7 +143,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         // language=sql
         const string CategorySql = " AND pc.CategoryId = @categoryId";
         // language=sql
-        const string SearchTextSql = $" AND {SqlTextSearch}";
+        const string SearchTextSql = $" AND {SqlTextSearchNewFilter}";
         // language=sql
         const string BrandsSql = " AND p.BrandId IN (SELECT Id FROM @brandIds)";
         // language=sql
@@ -147,6 +169,14 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         internal SearchQueryBuilder SelectCount()
         {
             countBuilder.Append( SelectCountSql );
+            return this;
+        }
+        internal SearchQueryBuilder CrossSearchText( string? searchText = null )
+        {
+            if (string.IsNullOrWhiteSpace( searchText ))
+                return this;
+            productBuilder.Append( SqlTextSearchNewCross );
+            countBuilder.Append( SqlTextSearchNewCross );
             return this;
         }
         internal SearchQueryBuilder JoinCategories( Guid? categoryId = null )
