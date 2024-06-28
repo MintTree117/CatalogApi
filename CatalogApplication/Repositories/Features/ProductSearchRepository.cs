@@ -54,7 +54,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     internal async Task<Replies<ProductSuggestionDto>> Suggestions( string searchText )
     {
         // language=sql
-        const string sql = $"SELECT p.Id, p.Name FROM CatalogApi.Products p WHERE {SqlTextSearch}";
+        const string sql = $"SELECT TOP 10 p.Id, p.Name FROM CatalogApi.Products p WHERE {SqlTextSearch}";
         var parameters = new DynamicParameters();
         parameters.Add( "searchText", searchText );
         var replies = await Dapper.QueryAsync<ProductSuggestionDto>( sql, parameters );
