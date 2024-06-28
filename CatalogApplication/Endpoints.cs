@@ -22,15 +22,19 @@ internal static class Endpoints
         
         app.MapGet( "api/search",
             static async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
-                await GetSearch( http, products, inventory ) );
+                await SearchFull( http, products, inventory ) );
 
         app.MapGet( "api/suggestions",
             static async ( [FromQuery] string searchText, ProductSearchRepository products ) =>
-                await GetSuggestions( searchText, products ) );
+                await SearchSuggestions( searchText, products ) );
+
+        app.MapGet( "api/similar",
+            static async ( [FromQuery] Guid productId, ProductSearchRepository products ) =>
+                await SearchSimilar( productId, products ) );
         
         app.MapGet( "api/view",
             static async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
-                await GetView( http, products, inventory ) );
+                await SearchIds( http, products, inventory ) );
         
         app.MapGet( "api/estimates",
             static async ( HttpContext http, InventoryRepository inventory ) =>
@@ -74,7 +78,7 @@ internal static class Endpoints
         var estimates = await inventory.GetDeliveryEstimates( productIds, new AddressDto( posX.Value, posX.Value ) );
         return Results.Ok( estimates );
     }
-    static async Task<IResult> GetSearch( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
+    static async Task<IResult> SearchFull( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
     {
         // FILTERS
         IQueryCollection query = http.Request.Query;
@@ -95,7 +99,7 @@ internal static class Endpoints
         );
         
         // SEARCH
-        var searchReply = await products.Search( filters );
+        var searchReply = await products.SearchFull( filters );
         if (!searchReply)
             return Results.Problem( searchReply.GetMessage() );
         var search = searchReply.Data;
@@ -110,14 +114,7 @@ internal static class Endpoints
         ProductsSearchDto dto = new( search.TotalMatches, search.Results, estimatesReply );
         return Results.Ok( dto );
     }
-    static async Task<IResult> GetSuggestions( string searchText, ProductSearchRepository products )
-    {
-        var reply = await products.Suggestions( searchText );
-        return reply
-            ? Results.Ok( reply.Enumerable.ToList() )
-            : Results.NotFound( reply.GetMessage() );
-    }
-    static async Task<IResult> GetView( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
+    static async Task<IResult> SearchIds( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
     {
         IQueryCollection query = http.Request.Query;
         var productIds = Utils.ParseGuidList( query["ProductIds"] );
@@ -127,7 +124,7 @@ internal static class Endpoints
         if (productIds is null)
             return Results.BadRequest( "Invalid Product Ids." );
 
-        var searchReply = await products.View( productIds );
+        var searchReply = await products.SearchIds( productIds );
         if (!searchReply)
             return Results.NotFound();
 
@@ -137,6 +134,20 @@ internal static class Endpoints
 
         var estimates = await inventory.GetDeliveryEstimates( productIds, address );
         return Results.Ok( new ProductsDto( searchReply.Enumerable.ToList(), estimates ) );
+    }
+    static async Task<IResult> SearchSuggestions( string searchText, ProductSearchRepository products )
+    {
+        var reply = await products.SearchSuggestions( searchText );
+        return reply
+            ? Results.Ok( reply.Enumerable.ToList() )
+            : Results.NotFound( reply.GetMessage() );
+    }
+    static async Task<IResult> SearchSimilar( Guid productId, ProductSearchRepository products )
+    {
+        var reply = await products.SearchSimilar( productId );
+        return reply
+            ? Results.Ok( reply )
+            : Results.NotFound( reply.GetMessage() );
     }
     static async Task<IResult> GetDetails( HttpContext http, ProductDetailsRepository repository, InventoryRepository inventory )
     {

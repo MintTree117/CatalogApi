@@ -12,7 +12,6 @@ namespace CatalogApplication.Repositories.Features;
 internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<ProductSearchRepository> logger ) 
     : BaseRepository<ProductSearchRepository>( dapper, logger )
 {
-    
     // language=sql
     const string SqlTextSearchNewCross =
         """
@@ -34,7 +33,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         )
         """;
     
-    internal async Task<Reply<SearchQueryReply>> Search( SearchFilters filters )
+    internal async Task<Reply<SearchQueryReply>> SearchFull( SearchFilters filters )
     {
         try 
         {
@@ -60,23 +59,48 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             return Reply<SearchQueryReply>.ServerError();
         }
     }
-    internal async Task<Replies<ProductSummaryDto>> View( List<Guid> productIds )
+    internal async Task<Replies<ProductSummaryDto>> SearchIds( List<Guid> productIds )
     {
         // language=sql
         const string viewSql = "SELECT p.* FROM CatalogApi.Products p WHERE p.Id IN (SELECT Id FROM @productIds)";
         var idsTable = GetIdsDataTable( productIds );
         var parameters = new DynamicParameters();
-        parameters.Add( "productIds", idsTable.AsTableValuedParameter( "CatalogApi.ProductIdsTvp" ) );
+        parameters.Add( "productIds", idsTable.AsTableValuedParameter( "CatalogApi.IdsTvp" ) );
         var reply = await Dapper.QueryAsync<ProductSummaryDto>( viewSql, parameters );
         return reply;
     }
-    internal async Task<Replies<ProductSuggestionDto>> Suggestions( string searchText )
+    internal async Task<Replies<ProductSuggestionDto>> SearchSuggestions( string searchText )
     {
         // language=sql
         const string sql = $"SELECT TOP 10 p.Id, p.Name FROM CatalogApi.Products p {SqlTextSearchNewCross} WHERE {SqlTextSearchNewFilter}";
         var parameters = new DynamicParameters();
         parameters.Add( "searchText", searchText );
         var replies = await Dapper.QueryAsync<ProductSuggestionDto>( sql, parameters );
+        return replies;
+    }
+    internal async Task<Replies<ProductSummaryDto>> SearchSimilar( Guid productId )
+    {
+        // language=sql
+        const string sql =
+            """
+            DECLARE @categoryIds TABLE (CategoryId UNIQUEIDENTIFIER);
+            
+            INSERT INTO @categoryIds (CategoryId)
+            SELECT CategoryId
+            FROM CatalogApi.ProductCategories
+            WHERE ProductId = @productId;
+            
+            SELECT TOP 10 p.*
+            FROM CatalogApi.Products p
+                JOIN CatalogApi.ProductCategories pc ON p.Id = pc.ProductId
+                    WHERE pc.CategoryId IN (SELECT CategoryId FROM @CategoryIds)
+                    AND p.Id <> @ProductId
+            ORDER BY NEWID();
+            """;
+
+        DynamicParameters parameters = new();
+        parameters.Add( "productId", productId );
+        var replies = await Dapper.QueryAsync<ProductSummaryDto>( sql, parameters );
         return replies;
     }
     
