@@ -13,31 +13,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     : BaseRepository<ProductSearchRepository>( dapper, logger )
 {
     // language=sql
-    const string SelectProductsSql = "SELECT DISTINCT p.Id, p.BrandId, p.IsFeatured, p.IsInStock, p.Name, p.Image, p.Price, p.SalePrice, p.Rating, p.NumberRatings, p.NumberSold FROM CatalogApi.Products p";
-    // language=sql
-    const string SelectCountSql = "SELECT COUNT(*) FROM CatalogApi.Products p";
-    // language=sql
-    const string JoinCategoriesSql = " INNER JOIN CatalogApi.ProductCategories pc ON p.Id = pc.ProductId";
-    // language=sql
-    const string BaseWhereClauseSql = " WHERE 1=1";
-    // language=sql
-    const string CategorySql = " AND pc.CategoryId = @categoryId";
-    // language=sql
-    const string SearchTextSql = " AND p.Name LIKE '%' + @searchText + '%'";
-    // language=sql
-    const string BrandsSql = " AND p.BrandId IN (SELECT Id FROM @brandIds)";
-    // language=sql
-    const string MinPriceSql = " AND (p.Price >= @minPrice OR p.SalePrice >= @minPrice)";
-    // language=sql
-    const string MaxPriceSql = " AND (p.Price <= @maxPrice OR (p.SalePrice > 0 AND p.SalePrice <= @maxPrice))";
-    // language=sql
-    const string StockSql = " AND p.IsInStock = 1";
-    // language=sql
-    const string FeaturedSql = " AND p.IsFeatured = 1";
-    // language=sql
-    const string SaleSql = " AND p.SalePrice > 0";
-    // language=sql
-    const string PaginationSql = " OFFSET @offset ROWS FETCH NEXT @rows ROWS ONLY";
+    const string SqlTextSearch = " EXISTS (SELECT 1 FROM STRING_SPLIT(@SearchText, ' ') AS SearchWords WHERE p.Name LIKE '%' + SearchWords.value + '%' )";
     
     internal async Task<Reply<SearchQueryReply>> Search( SearchFilters filters )
     {
@@ -78,7 +54,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     internal async Task<Replies<ProductSuggestionDto>> Suggestions( string searchText )
     {
         // language=sql
-        const string sql = "SELECT Id, [Name] FROM CatalogApi.Products WHERE [Name] LIKE '%' + @searchText + '%'";
+        const string sql = $"SELECT p.Id, p.Name FROM CatalogApi.Products p WHERE {SqlTextSearch}";
         var parameters = new DynamicParameters();
         parameters.Add( "searchText", searchText );
         var replies = await Dapper.QueryAsync<ProductSuggestionDto>( sql, parameters );
@@ -129,6 +105,38 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         StringBuilder countBuilder,
         DynamicParameters parameters )
     {
+        // language=sql
+        const string SelectProductsSql =
+            """
+            SELECT DISTINCT
+                p.Id, p.BrandId, p.IsFeatured, p.IsInStock, p.Name, p.Image, p.Price, p.SalePrice, p.Rating, p.NumberRatings, p.NumberSold
+            FROM CatalogApi.Products p
+            """;
+        // language=sql
+        const string SelectCountSql = "SELECT COUNT(*) FROM CatalogApi.Products p";
+        // language=sql
+        const string JoinCategoriesSql = " INNER JOIN CatalogApi.ProductCategories pc ON p.Id = pc.ProductId";
+        // language=sql
+        const string BaseWhereClauseSql = " WHERE 1=1";
+        // language=sql
+        const string CategorySql = " AND pc.CategoryId = @categoryId";
+        // language=sql
+        const string SearchTextSql = $" AND {SqlTextSearch}";
+        // language=sql
+        const string BrandsSql = " AND p.BrandId IN (SELECT Id FROM @brandIds)";
+        // language=sql
+        const string MinPriceSql = " AND (p.Price >= @minPrice OR p.SalePrice >= @minPrice)";
+        // language=sql
+        const string MaxPriceSql = " AND (p.Price <= @maxPrice OR (p.SalePrice > 0 AND p.SalePrice <= @maxPrice))";
+        // language=sql
+        const string StockSql = " AND p.IsInStock = 1";
+        // language=sql
+        const string FeaturedSql = " AND p.IsFeatured = 1";
+        // language=sql
+        const string SaleSql = " AND p.SalePrice > 0";
+        // language=sql
+        const string PaginationSql = " OFFSET @offset ROWS FETCH NEXT @rows ROWS ONLY";
+        
         internal string GetSql() =>
             $"{countBuilder}; {productBuilder};";
         internal SearchQueryBuilder SelectProducts()
@@ -145,8 +153,8 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         {
             if (categoryId is null) 
                 return this;
-            productBuilder.Append( ProductSearchRepository.JoinCategoriesSql );
-            countBuilder.Append( ProductSearchRepository.JoinCategoriesSql );
+            productBuilder.Append( JoinCategoriesSql );
+            countBuilder.Append( JoinCategoriesSql );
             return this;
         }
         internal SearchQueryBuilder StartFiltering()

@@ -293,10 +293,9 @@ internal static class ProductGenerator
     }
     static string PickImage( Category primaryCategory, RandomUtility random )
     {
-        return ProductSeedData.TestImage;
-        /*int i = random.GetRandomInt( ProductSeedData.ImagesPerCategory - 1 );
-        string image = $"{primaryCategory.Name}/{i}.png";
-        return image;*/
+        int i = random.GetRandomInt( 21 );
+        string image = $"/images/p{i}.jpg";
+        return image;
     }
     static decimal PickPrice( RandomUtility random, out decimal price )
     {
