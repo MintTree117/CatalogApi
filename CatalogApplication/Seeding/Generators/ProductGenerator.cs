@@ -34,10 +34,11 @@ internal static class ProductGenerator
                 Product p = new(
                     productId,
                     brand.Id,
+                    PickName( brand, primaryCategory, i, px.Item2 ),
+                    brand.Name,
+                    PickImage( primaryCategory, random ),
                     PickIsFeatured( random ),
                     PickIsInStock( random ),
-                    PickName( brand, primaryCategory, i, px.Item2 ),
-                    PickImage( primaryCategory, random ),
                     PickPrice( random, out decimal price ),
                     PickSalePrice( price, random ),
                     rating.Item2,
