@@ -36,8 +36,8 @@ internal static class Endpoints
                 await SearchSuggestions( searchText, products ) );
 
         app.MapGet( "api/searchSimilar",
-            static async ( [FromQuery] Guid productId, ProductSearchRepository products ) =>
-                await SearchSimilar( productId, products ) );
+            static async ( [FromQuery] Guid productId, HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
+                await SearchSimilar( productId, http, products, inventory ) );
         
         app.MapGet( "api/searchIds",
             static async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
@@ -72,9 +72,9 @@ internal static class Endpoints
     }
     static async Task<IResult> GetSpecials( ProductSpecialsRepository specials )
     {
-        var reply = await specials.GetSpecials();
-        return reply
-            ? Results.Ok( reply.Data )
+        var specialsReply = await specials.GetSpecials();
+        return specialsReply
+            ? Results.Ok( specialsReply.Data )
             : Results.NotFound();
     }
     static async Task<IResult> SearchSuggestions( string searchText, ProductSearchRepository products )
@@ -88,29 +88,26 @@ internal static class Endpoints
     {
         IQueryCollection query = http.Request.Query;
         var productIds = Utils.ParseGuidList( query[ProductIds] );
-        var posX = Utils.ParseInt( query[PosX] );
-        var posY = Utils.ParseInt( query[PosY] );
-
         if (productIds is null)
             return Results.BadRequest( "Invalid Product Ids." );
 
         var searchReply = await products.SearchIds( productIds );
         if (!searchReply)
-            return Results.NotFound();
+            return Results.Problem( searchReply.GetMessage() );
 
-        AddressDto? address = null;
-        if (posX is not null && posY is not null)
-            address = new AddressDto( posX.Value, posX.Value );
-
-        var estimates = await inventory.GetDeliveryEstimates( productIds, address );
-        return Results.Ok( new ProductsDto( searchReply.Enumerable.ToList(), estimates ) );
+        var results = searchReply.Enumerable.ToList();
+        await ApplyShippingEstimates( productIds, results, http.Request.Query, inventory );
+        return Results.Ok( results );
     }
-    static async Task<IResult> SearchSimilar( Guid productId, ProductSearchRepository products )
+    static async Task<IResult> SearchSimilar( Guid productId, HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
     {
-        var reply = await products.SearchSimilar( productId );
-        return reply
-            ? Results.Ok( reply.Enumerable.ToList() )
-            : Results.NotFound( reply.GetMessage() );
+        var searchReply = await products.SearchSimilar( productId );
+        if (!searchReply)
+            return Results.Problem( searchReply.GetMessage() );
+
+        var results = searchReply.Enumerable.ToList();
+        await ApplyShippingEstimates( [productId], results, http.Request.Query, inventory );
+        return Results.Ok( results );
     }
     static async Task<IResult> SearchFull( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
     {
@@ -139,15 +136,10 @@ internal static class Endpoints
         var search = searchReply.Data;
 
         // SHIPPING
-        AddressDto? deliveryAddress = filters.PosX is null || filters.PosY is null
-            ? null
-            : new AddressDto( filters.PosX.Value, filters.PosY.Value );
-        List<Guid> productIds = search.Results.Select( static p => p.Id ).ToList();
-        List<int> estimatesReply = await inventory.GetDeliveryEstimates( productIds, deliveryAddress );
-
-        // FINISH
-        ProductsSearchDto dto = new( search.TotalMatches, search.Results, estimatesReply );
-        return Results.Ok( dto );
+        var productIds = search.Results.Select( static p => p.Id ).ToList();
+        await ApplyShippingEstimates( productIds, search.Results, http.Request.Query, inventory );
+        
+        return Results.Ok( ProductsSearchDto.With( search.TotalMatches, search.Results ) );
     }
     static async Task<IResult> GetEstimates( HttpContext http, InventoryRepository inventory )
     {
@@ -155,13 +147,14 @@ internal static class Endpoints
         var productIds = Utils.ParseGuidList( query[ProductIds] );
         var posX = Utils.ParseInt( query[PosX] );
         var posY = Utils.ParseInt( query[PosY] );
+        AddressDto? address = null;
 
         if (productIds is null)
             return Results.BadRequest( "Invalid Product Ids." );
-        if (posX is null || posY is null)
-            return Results.BadRequest( "Invalid Address." );
+        if (posX is not null && posY is not null)
+            address = new AddressDto( posX.Value, posY.Value );
 
-        var estimates = await inventory.GetDeliveryEstimates( productIds, new AddressDto( posX.Value, posX.Value ) );
+        var estimates = await inventory.GetDeliveryEstimates( productIds, address );
         return Results.Ok( estimates );
     }
     static async Task<IResult> GetDetails( HttpContext http, ProductDetailsRepository repository, InventoryRepository inventory )
@@ -183,5 +176,20 @@ internal static class Endpoints
         var shippingDays = await inventory.GetDeliveryEstimates( [reply.Data.Id], new AddressDto( posX.Value, posY.Value ) );
         reply.Data.ShippingDays = shippingDays.FirstOrDefault();
         return Results.Ok( reply.Data );
+    }
+
+    static async Task ApplyShippingEstimates( List<Guid> productIds, List<ProductSummaryDto> results, IQueryCollection query, InventoryRepository inventory )
+    {
+        AddressDto? address = null;
+        var posX = Utils.ParseInt( query[PosX] );
+        var posY = Utils.ParseInt( query[PosY] );
+        if (posX is not null && posY is not null)
+            address = new AddressDto( posX.Value, posX.Value );
+        var estimates = await inventory.GetDeliveryEstimates( productIds, address );
+        for ( int i = 0; i < results.Count && i < estimates.Count; i++ )
+        {
+            var dto = results[i];
+            dto.ShippingDays = estimates[i];
+        }
     }
 }

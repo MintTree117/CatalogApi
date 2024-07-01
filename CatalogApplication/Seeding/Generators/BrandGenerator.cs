@@ -41,7 +41,8 @@ internal static class BrandGenerator
         table.Columns.Add( nameof( Brand.Id ), typeof( Guid ) );
         table.Columns.Add( nameof( Brand.Name ), typeof( string ) );
 
-        foreach ( Brand b in brands ) {
+        foreach ( Brand b in brands ) 
+        {
             DataRow row = table.NewRow();
             row[nameof( Brand.Id )] = b.Id;
             row[nameof( Brand.Name )] = b.Name;

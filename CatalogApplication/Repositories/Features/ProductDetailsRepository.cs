@@ -24,6 +24,9 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
             return Reply<ProductDetailsDto>.Success( entry.DetailsDto );
 
         var fetchReply = await FetchDetails( productId );
+        if (fetchReply)
+            AddToCache( fetchReply.Data );
+        
         return fetchReply
             ? Reply<ProductDetailsDto>.Success( fetchReply.Data )
             : Reply<ProductDetailsDto>.Failure( fetchReply.GetMessage() );
@@ -33,7 +36,7 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
         const string sql =
             """
                 SELECT
-                p.Id, p.BrandId, p.IsFeatured, p.IsInStock, p.Name, p.Image, p.Price, p.SalePrice, p.Rating, p.NumberRatings,
+                p.Id, p.BrandId, p.Name, p.BrandName, p.Image, p.IsFeatured, p.IsInStock, p.Price, p.SalePrice, p.Rating, p.NumberRatings,
                 c.CategoryId,
                 pd.Description,
                 px.Xml

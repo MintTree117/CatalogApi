@@ -62,7 +62,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     internal async Task<Replies<ProductSummaryDto>> SearchIds( List<Guid> productIds )
     {
         // language=sql
-        const string viewSql = "SELECT p.* FROM CatalogApi.Products p WHERE p.Id IN (SELECT Id FROM @productIds)";
+        const string viewSql = "SELECT TOP 10 p.* FROM CatalogApi.Products p WHERE p.Id IN (SELECT Id FROM @productIds)";
         var idsTable = GetIdsDataTable( productIds );
         var parameters = new DynamicParameters();
         parameters.Add( "productIds", idsTable.AsTableValuedParameter( "CatalogApi.IdsTvp" ) );
@@ -153,7 +153,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         const string SelectProductsSql =
             """
             SELECT DISTINCT
-                p.Id, p.BrandId, p.IsFeatured, p.IsInStock, p.Name, p.Image, p.Price, p.SalePrice, p.Rating, p.NumberRatings, p.NumberSold
+                p.Id, p.BrandId, p.Name, p.BrandName, p.Image, p.IsFeatured, p.IsInStock, p.Price, p.SalePrice, p.Rating, p.NumberRatings, p.NumberSold
             FROM CatalogApi.Products p
             """;
         // language=sql
@@ -265,7 +265,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
                 return this;
             productBuilder.Append( BrandsSql );
             countBuilder.Append( BrandsSql );
-            parameters.Add( "brandIds", GetIdsDataTable( brandIds ).AsTableValuedParameter( "CatalogApi.BrandIdsTvp" ) );
+            parameters.Add( "brandIds", GetIdsDataTable( brandIds ).AsTableValuedParameter( "CatalogApi.IdsTvp" ) );
             return this;
         }
         internal SearchQueryBuilder FilterByMinPrice( int? minPrice )
@@ -319,14 +319,13 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
                 _ => "p.NumberSold DESC"
             };
         }
-    }
-    
-    enum OrderType
-    {
-        BestSelling,
-        BestRating,
-        MostRatings,
-        PriceLow,
-        PriceHigh
+        enum OrderType
+        {
+            BestSelling,
+            BestRating,
+            MostRatings,
+            PriceLow,
+            PriceHigh
+        }
     }
 }
