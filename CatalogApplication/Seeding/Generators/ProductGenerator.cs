@@ -174,22 +174,15 @@ internal static class ProductGenerator
                 // INIT NEW SPEC
                 string spec = keys[specIndex];
                 string[] values = specs[keys[specIndex]];
-                int valueCount = random.GetRandomInt( values.Length - 1 );
-                
-                // IF BOOLEAN VALUE TYPE
-                if (valueCount == 2) {
-                    string boolValue = values[random.GetRandomInt( 1 )];
-                    specsAndValues.Add( spec, [boolValue] );
-                    break;
-                }
+                int selectedValueCount = random.GetRandomInt( 1, values.Length - 1 );
                 
                 // MULTIPLE CHOICE TYPE
                 List<string> selectedValues = [];
-                HashSet<int> valueUsed = [];
-                for ( int k = 0; k < valueCount; k++ ) {
+                HashSet<int> indexUsed = [];
+                for ( int k = 0; k < selectedValueCount; k++ ) {
                     for ( int l = 0; l <= LoopSafety; l++ ) {
-                        int valueIndex = random.GetRandomInt( valueCount );
-                        if (!valueUsed.Add( valueIndex ))
+                        int valueIndex = random.GetRandomInt( values.Length - 1 );
+                        if (!indexUsed.Add( valueIndex ))
                             continue;
                         selectedValues.Add( values[valueIndex] );
                     }
@@ -220,7 +213,7 @@ internal static class ProductGenerator
     static List<Category> PickRandomCategories( Category primaryCategory, Dictionary<Guid, List<Category>> secondaryCategories, RandomUtility random )
     {
         List<Category> selectedSecondary = [];
-        int numSecondary = random.GetRandomInt( 1, 4 );
+        int numSecondary = random.GetRandomInt( 3, 6 );
         for ( int i = 0; i < numSecondary; i++ ) {
             for ( int j = 0; j < LoopSafety; j++ ) {
                 List<Category> subCategories = secondaryCategories[primaryCategory.Id];
