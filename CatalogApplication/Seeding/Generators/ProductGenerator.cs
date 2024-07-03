@@ -66,10 +66,11 @@ internal static class ProductGenerator
         DataTable table = new();
         table.Columns.Add( nameof( Product.Id ), typeof( Guid ) );
         table.Columns.Add( nameof( Product.BrandId ), typeof( Guid ) );
+        table.Columns.Add( nameof( Product.Name ), typeof( string ) );
+        table.Columns.Add( nameof( Product.BrandName ), typeof( string ) );
+        table.Columns.Add( nameof( Product.Image ), typeof( string ) );
         table.Columns.Add( nameof( Product.IsFeatured ), typeof( bool ) );
         table.Columns.Add( nameof( Product.IsInStock ), typeof( bool ) );
-        table.Columns.Add( nameof( Product.Name ), typeof( string ) );
-        table.Columns.Add( nameof( Product.Image ), typeof( string ) );
         table.Columns.Add( nameof( Product.Price ), typeof( decimal ) );
         table.Columns.Add( nameof( Product.SalePrice ), typeof( decimal ) );
         table.Columns.Add( nameof( Product.Rating ), typeof( float ) );
@@ -80,10 +81,11 @@ internal static class ProductGenerator
             DataRow row = table.NewRow();
             row[nameof( Product.Id )] = p.Id;
             row[nameof( Product.BrandId )] = p.BrandId;
+            row[nameof( Product.Name )] = p.Name;
+            row[nameof( Product.BrandName )] = p.BrandName;
+            row[nameof( Product.Image )] = p.Image;
             row[nameof( Product.IsFeatured )] = p.IsFeatured;
             row[nameof( Product.IsInStock )] = p.IsInStock;
-            row[nameof( Product.Name )] = p.Name;
-            row[nameof( Product.Image )] = p.Image;
             row[nameof( Product.Price )] = p.Price;
             row[nameof( Product.SalePrice )] = p.SalePrice;
             row[nameof( Product.Rating )] = p.Rating;
@@ -155,6 +157,9 @@ internal static class ProductGenerator
     }
     static (ProductXml, XmlElement) GenerateProductXml( Guid productId, Category category, RandomUtility random )
     {
+        // FORMAT: XML_DOCUMENT -> ROOT_ELEMENT -> NODES[]
+        // NODE = KVP (NAME, VALUES (",")
+        
         // INITIALIZATION
         Dictionary<string, string[]> specs = ProductXmlSeedData.ProductSpecsByCategory[category.Name];
         List<string> keys = specs.Keys.ToList();
@@ -162,7 +167,7 @@ internal static class ProductGenerator
         int numSpecs = random.GetRandomInt( keys.Count - 1 );
         
         // SELECT SPECS
-        Dictionary<string, List<string>> specsAndValues = [];
+        Dictionary<string, List<string>> selectedSpecsAndValues = [];
         for ( int i = 0; i <= numSpecs; i++ ) {
             for ( int j = 0; j < LoopSafety; j++ ) {
                 
@@ -172,9 +177,9 @@ internal static class ProductGenerator
                     continue;
                 
                 // INIT NEW SPEC
-                string spec = keys[specIndex];
+                string specName = keys[specIndex];
                 string[] values = specs[keys[specIndex]];
-                int selectedValueCount = random.GetRandomInt( 1, values.Length - 1 );
+                int selectedValueCount = random.GetRandomInt( 1, Math.Max( values.Length - 1, 1 ) );
                 
                 // MULTIPLE CHOICE TYPE
                 List<string> selectedValues = [];
@@ -187,7 +192,7 @@ internal static class ProductGenerator
                         selectedValues.Add( values[valueIndex] );
                     }
                 }
-                specsAndValues.Add( spec, selectedValues );
+                selectedSpecsAndValues.Add( specName, selectedValues );
             }
         }
         
@@ -196,15 +201,13 @@ internal static class ProductGenerator
         XmlElement root = xmlDoc.CreateElement( "ProductSpecs" );
         xmlDoc.AppendChild( root );
 
-        foreach ( KeyValuePair<string, List<string>> kvp in specsAndValues ) {
+        foreach ( KeyValuePair<string, List<string>> kvp in selectedSpecsAndValues ) {
             string xmlName = kvp.Key.Replace( ' ', '-' );
             XmlElement specElement = xmlDoc.CreateElement( xmlName );
-            foreach ( string value in kvp.Value ) {
-                string xmlValue = value.Replace( ' ', '-' );
-                XmlElement valueElement = xmlDoc.CreateElement( "Value" );
-                valueElement.InnerText = xmlValue;
-                specElement.AppendChild( valueElement );
-            }
+            string xmlValue = string.Join( ",", kvp.Value );
+            XmlElement valueElement = xmlDoc.CreateElement( "Value" );
+            valueElement.InnerText = xmlValue;
+            specElement.AppendChild( valueElement );
             root.AppendChild( specElement );
         }
         return (new ProductXml( productId, xmlDoc.InnerXml ), root);
@@ -263,13 +266,14 @@ internal static class ProductGenerator
         const int NameCharacterLength = 256;
         StringBuilder builder = new();
         builder.Append( $"{brand.Name} {ProductSeedData.ProductNamesByPrimaryCategory[primaryCategory.Name]} {iteration}" );
+        
         XmlNodeList elements = root.ChildNodes;
-        foreach ( XmlNode n in elements )
+        foreach ( XmlNode node in elements )
         {
-            if (n.NodeType != XmlNodeType.Element) 
+            if (node.NodeType != XmlNodeType.Element) 
                 continue;
 
-            XmlElement element = (XmlElement) n;
+            XmlElement element = (XmlElement) node;
             var split = element.InnerText
                 .Trim()
                 .Split( "," );
@@ -284,15 +288,15 @@ internal static class ProductGenerator
                     continue;
                 if (builder.Length + s.Length + 1 >= NameCharacterLength)
                     break;
-                builder.Append( s );
-                if (builder.Length > 0)
-                    builder.Append( " " );
+                string trimmed = s.Trim();
+                builder.Append( trimmed );
+                builder.Append( " " );
                 count++;
             }
         }
 
         string result = builder.ToString();
-        result = result.Trim();
+        //result = result.Trim();
         if (result.Length >= NameCharacterLength)
             result = result.Substring( 0, NameCharacterLength );
         return result;

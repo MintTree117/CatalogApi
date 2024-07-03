@@ -194,7 +194,7 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
             : Reply<bool>.Failure( reply );
     }
 
-    static async Task<Reply<bool>> InsertInventories( IDapperContext dapper, List<ProductInventory> inventories )
+    async Task<Reply<bool>> InsertInventories( IDapperContext dapper, List<ProductInventory> inventories )
     {
         const string sql =
             """
@@ -224,8 +224,8 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
     {
         const string sql =
             """
-            INSERT INTO CatalogApi.Products (Id, BrandId, IsFeatured, IsInStock, [Name], Image, Price, SalePrice, Rating, NumberRatings, NumberSold  )
-            SELECT Id, BrandId, IsFeatured, IsInStock, [Name], Image, Price, SalePrice, Rating, NumberRatings, NumberSold
+            INSERT INTO CatalogApi.Products (Id, BrandId, [Name], BrandName, Image, IsFeatured, IsInStock, Price, SalePrice, Rating, NumberRatings, NumberSold  )
+            SELECT Id, BrandId, [Name], BrandName, Image, IsFeatured, IsInStock, Price, SalePrice, Rating, NumberRatings, NumberSold
             FROM @ProductsTvp
             """;
         
@@ -249,7 +249,7 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
 
         return Reply<bool>.Success( true );
     }
-    static async Task<Reply<bool>> InsertProductCategories( IDapperContext dapper, List<ProductCategory> productCategories )
+    async Task<Reply<bool>> InsertProductCategories( IDapperContext dapper, List<ProductCategory> productCategories )
     {
         const string Sql =
             """
@@ -274,7 +274,7 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
 
         return Reply<bool>.Success( true );
     }
-    static async Task<Reply<bool>> InsertProductDescriptions( IDapperContext dapper, List<ProductDescription> productDescriptions )
+    async Task<Reply<bool>> InsertProductDescriptions( IDapperContext dapper, List<ProductDescription> productDescriptions )
     {
         const string Sql =
             """
@@ -299,7 +299,7 @@ internal sealed class SeedingService( IDapperContext dapper, ILogger<SeedingServ
 
         return Reply<bool>.Success( true );
     }
-    static async Task<Reply<bool>> InsertProductXmls( IDapperContext dapper, List<ProductXml> productXmls )
+    async Task<Reply<bool>> InsertProductXmls( IDapperContext dapper, List<ProductXml> productXmls )
     {
         const string Sql =
             """

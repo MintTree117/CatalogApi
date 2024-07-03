@@ -5,7 +5,8 @@ internal sealed class ProductSummaryDto
     // ReSharper disable once UnusedMember.Global
     public ProductSummaryDto() { }
     
-    public ProductSummaryDto(Guid Id,
+    public ProductSummaryDto(
+        Guid Id,
         Guid BrandId,
         string Name,
         string BrandName,
