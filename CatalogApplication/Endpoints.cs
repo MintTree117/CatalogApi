@@ -168,12 +168,15 @@ internal static class Endpoints
             return Results.BadRequest( "Invalid Product Id." );
 
         var reply = await repository.GetDetails( productId.Value );
-        if (!reply || posX is null || posY is null)
+        AddressDto? address = posX is null || posY is null
+            ? null
+            : new AddressDto( posX.Value, posY.Value );
+        if (!reply)
             return reply
                 ? Results.Ok( reply.Data )
                 : Results.Problem( reply.GetMessage() );
 
-        var shippingDays = await inventory.GetDeliveryEstimates( [reply.Data.Id], new AddressDto( posX.Value, posY.Value ) );
+        var shippingDays = await inventory.GetDeliveryEstimates( [reply.Data.Id], address );
         reply.Data.ShippingDays = shippingDays.FirstOrDefault();
         return Results.Ok( reply.Data );
     }
