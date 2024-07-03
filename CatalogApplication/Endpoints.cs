@@ -121,7 +121,7 @@ internal static class Endpoints
             Utils.ParseInt( query["MaxPrice"] ),
             Utils.ParseBool( query["IsFeatured"] ),
             Utils.ParseBool( query["IsInStock"] ),
-            Utils.ParseBool( query["IsOnSale"] ) ?? false,
+            Utils.ParseBool( query["IsOnSale"] ),
             Utils.ParseInt( query[Page] ) ?? 0,
             Utils.ParseInt( query[PageSize] ) ?? FallBackPageSize,
             Utils.ParseInt( query[SortBy] ) ?? 0,
