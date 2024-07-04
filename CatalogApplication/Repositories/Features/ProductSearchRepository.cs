@@ -78,7 +78,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         var replies = await Dapper.QueryAsync<ProductSuggestionDto>( sql, parameters );
         return replies;
     }
-    internal async Task<Replies<ProductSummaryDto>> SearchSimilar( Guid productId )
+    internal async Task<Reply<ProductsSimilarDto>> SearchSimilar( Guid productId, Guid brandId )
     {
         // language=sql
         const string sql =
@@ -93,15 +93,49 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             SELECT TOP 10 p.*
             FROM CatalogApi.Products p
                 JOIN CatalogApi.ProductCategories pc ON p.Id = pc.ProductId
-                    WHERE pc.CategoryId IN (SELECT CategoryId FROM @CategoryIds)
-                    AND p.Id <> @ProductId
+                    WHERE pc.CategoryId IN (SELECT CategoryId FROM @categoryIds)
+                    AND p.BrandId = @brandId
+                    AND p.Id <> @productId
+            ORDER BY NEWID();
+
+            DECLARE @categoryIds2 TABLE (CategoryId UNIQUEIDENTIFIER);
+            
+            INSERT INTO @categoryIds2 (CategoryId)
+            SELECT CategoryId
+            FROM CatalogApi.ProductCategories
+            WHERE ProductId = @productId;
+            
+            SELECT TOP 10 p.*
+            FROM CatalogApi.Products p
+                JOIN CatalogApi.ProductCategories pc ON p.Id = pc.ProductId
+                    WHERE pc.CategoryId IN (SELECT CategoryId FROM @categoryIds2)
+                    AND p.Id <> @productId
             ORDER BY NEWID();
             """;
 
         DynamicParameters parameters = new();
         parameters.Add( "productId", productId );
-        var replies = await Dapper.QueryAsync<ProductSummaryDto>( sql, parameters );
-        return replies;
+        parameters.Add( "brandId", brandId );
+
+        try
+        {
+            await using var connection = await Dapper.GetOpenConnection();
+            if (connection.State != ConnectionState.Open)
+                return Reply<ProductsSimilarDto>.ServerError();
+
+            var multi = await connection.QueryMultipleAsync( sql, parameters );
+
+            ProductsSimilarDto dto = new(
+                (await multi.ReadAsync<ProductSummaryDto>()).ToList(),
+                (await multi.ReadAsync<ProductSummaryDto>()).ToList() );
+
+            return Reply<ProductsSimilarDto>.Success( dto );
+        }
+        catch ( Exception e )
+        {
+            LogException( e, "An exception was thrown while trying to query dapper for similar products." );
+            return Reply<ProductsSimilarDto>.ServerError();
+        }
     }
     
     static SearchQueryBuilder BuildCatalogSearchSql( SearchFilters filters )

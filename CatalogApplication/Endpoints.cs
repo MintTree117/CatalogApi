@@ -36,8 +36,8 @@ internal static class Endpoints
                 await SearchSuggestions( searchText, products ) );
 
         app.MapGet( "api/searchSimilar",
-            static async ( [FromQuery] Guid productId, HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
-                await SearchSimilar( productId, http, products, inventory ) );
+            static async ( [FromQuery] Guid productId, [FromQuery] Guid brandId, HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
+                await SearchSimilar( productId, brandId, http, products, inventory ) );
         
         app.MapGet( "api/searchIds",
             static async ( HttpContext http, ProductSearchRepository products, InventoryRepository inventory ) =>
@@ -99,15 +99,19 @@ internal static class Endpoints
         await ApplyShippingEstimates( productIds, results, http.Request.Query, inventory );
         return Results.Ok( results );
     }
-    static async Task<IResult> SearchSimilar( Guid productId, HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
+    static async Task<IResult> SearchSimilar( Guid productId, Guid brandId, HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
     {
-        var searchReply = await products.SearchSimilar( productId );
+        var searchReply = await products.SearchSimilar( productId, brandId );
         if (!searchReply)
             return Results.Problem( searchReply.GetMessage() );
 
-        var results = searchReply.Enumerable.ToList();
-        await ApplyShippingEstimates( [productId], results, http.Request.Query, inventory );
-        return Results.Ok( results );
+        var results1 = searchReply.Data.SimilarToBrand;
+        var results2 = searchReply.Data.SimilarToProduct;
+        var task1 = ApplyShippingEstimates( [productId], results1, http.Request.Query, inventory );
+        var task2 = ApplyShippingEstimates( [productId], results2, http.Request.Query, inventory );
+
+        await Task.WhenAll( task1, task2 );
+        return Results.Ok( searchReply.Data );
     }
     static async Task<IResult> SearchFull( HttpContext http, ProductSearchRepository products, InventoryRepository inventory )
     {
