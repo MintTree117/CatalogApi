@@ -14,7 +14,9 @@ internal sealed class ProductDetailsDto
         bool isFeatured,
         bool isInStock,
         decimal price,
-        decimal salePrice,
+        decimal? salePrice,
+        DateTime? saleEndDate,
+        DateTime releaseDate,
         float rating,
         int numberRatings,
         int shippingDays,
@@ -31,6 +33,8 @@ internal sealed class ProductDetailsDto
         IsInStock = isInStock;
         Price = price;
         SalePrice = salePrice;
+        SaleEndDate = saleEndDate;
+        ReleaseDate = releaseDate;
         Rating = rating;
         NumberRatings = numberRatings;
         ShippingDays = shippingDays;
@@ -46,7 +50,9 @@ internal sealed class ProductDetailsDto
     public bool IsFeatured { get; set; }
     public bool IsInStock { get; set; }
     public decimal Price { get; set; }
-    public decimal SalePrice { get; set; }
+    public decimal? SalePrice { get; set; }
+    public DateTime? SaleEndDate { get; set; }
+    public DateTime ReleaseDate { get; set; }
     public float Rating { get; set; }
     public int NumberRatings { get; set; }
     public int ShippingDays { get; set; }

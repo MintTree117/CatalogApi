@@ -79,7 +79,7 @@ internal static class Endpoints
         {
             ProductSummaryDto p = products.Enumerable.First( p => p.Id == item.ProductId );
             item.UnitName = p.Name;
-            item.UnitPrice = p.SalePrice > 0 ? p.SalePrice : p.Price;
+            item.UnitPrice = p.SalePrice ?? p.Price;
         }
 
         return Results.Ok( inventoryReply.Data );

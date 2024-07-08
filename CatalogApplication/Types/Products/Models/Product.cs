@@ -9,7 +9,9 @@ internal sealed record Product(
     bool IsFeatured,
     bool IsInStock,
     decimal Price,
-    decimal SalePrice,
+    decimal? SalePrice,
+    DateTime? SaleEndDate,
+    DateTime ReleaseDate,
     float Rating,
     int NumberRatings,
     int NumberSold );

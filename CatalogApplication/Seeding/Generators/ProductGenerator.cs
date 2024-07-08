@@ -31,6 +31,7 @@ internal static class ProductGenerator
                 (int,float) rating = PickRating( numSold, random );
                 (ProductXml, XmlElement) px =
                     GenerateProductXml( productId, primaryCategory, random );
+                DateTime? saleEndDate = PickSaleDate( random );
                 Product p = new(
                     productId,
                     brand.Id,
@@ -40,7 +41,9 @@ internal static class ProductGenerator
                     PickIsFeatured( random ),
                     PickIsInStock( random ),
                     PickPrice( random, out decimal price ),
-                    PickSalePrice( price, random ),
+                    saleEndDate is null ? null : PickSalePrice( price, random ),
+                    saleEndDate,
+                    PickReleaseDate( random ),
                     rating.Item2,
                     rating.Item1,
                     numSold );
@@ -72,7 +75,9 @@ internal static class ProductGenerator
         table.Columns.Add( nameof( Product.IsFeatured ), typeof( bool ) );
         table.Columns.Add( nameof( Product.IsInStock ), typeof( bool ) );
         table.Columns.Add( nameof( Product.Price ), typeof( decimal ) );
-        table.Columns.Add( nameof( Product.SalePrice ), typeof( decimal ) );
+        table.Columns.Add( nameof( Product.SalePrice ), typeof( decimal? ) );
+        table.Columns.Add( nameof( Product.SaleEndDate ), typeof( DateTime? ) );
+        table.Columns.Add( nameof( Product.ReleaseDate ), typeof( DateTime ) );
         table.Columns.Add( nameof( Product.Rating ), typeof( float ) );
         table.Columns.Add( nameof( Product.NumberRatings ), typeof( int ) );
         table.Columns.Add( nameof( Product.NumberSold ), typeof( int ) );
@@ -88,6 +93,8 @@ internal static class ProductGenerator
             row[nameof( Product.IsInStock )] = p.IsInStock;
             row[nameof( Product.Price )] = p.Price;
             row[nameof( Product.SalePrice )] = p.SalePrice;
+            row[nameof( Product.SaleEndDate )] = p.SaleEndDate;
+            row[nameof( Product.ReleaseDate )] = p.ReleaseDate;
             row[nameof( Product.Rating )] = p.Rating;
             row[nameof( Product.NumberRatings )] = p.NumberRatings;
             row[nameof( Product.NumberSold )] = p.NumberSold;
@@ -321,6 +328,23 @@ internal static class ProductGenerator
         double maxSalePrice = 0.9 * (double) mainPrice;
         double salePrice = random.GetRandomDouble( maxSalePrice );
         return (decimal) salePrice;
+    }
+    static DateTime? PickSaleDate( RandomUtility random )
+    {
+        bool hasSale = random.GetRandomBool( 0.2 );
+        if (!hasSale)
+            return null;
+
+        int days = random.GetRandomInt( 1, 30 );
+        DateTime saleEndDate = DateTime.Now + TimeSpan.FromDays( days );
+        return saleEndDate;
+    }
+    static DateTime PickReleaseDate( RandomUtility random )
+    {
+        int months = random.GetRandomInt( 1, 120 );
+        int days = months * 30;
+        DateTime releaseDate = DateTime.Now - TimeSpan.FromDays( days );
+        return releaseDate;
     }
     static int PickNumberSold( RandomUtility random )
     {

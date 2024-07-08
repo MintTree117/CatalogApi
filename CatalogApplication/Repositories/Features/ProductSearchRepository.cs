@@ -187,7 +187,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         const string SelectProductsSql =
             """
             SELECT DISTINCT
-                p.Id, p.BrandId, p.Name, p.BrandName, p.Image, p.IsFeatured, p.IsInStock, p.Price, p.SalePrice, p.Rating, p.NumberRatings, p.NumberSold
+                p.Id, p.BrandId, p.Name, p.BrandName, p.Image, p.IsFeatured, p.IsInStock, p.Price, p.SalePrice, p.SaleEndDate, p.ReleaaseDate, p.Rating, p.NumberRatings, p.NumberSold
             FROM CatalogApi.Products p
             """;
         // language=sql
@@ -323,7 +323,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         internal SearchQueryBuilder OrderBy( int orderBy )
         {
             // language=sql
-            string orderBySql = $" ORDER BY {GetOrderType( orderBy )}";
+            string orderBySql = $" ORDER BY {GetOrderByType( orderBy )}";
             productBuilder.Append( orderBySql );
             parameters.Add( "orderBy", orderBy );
             return this;
@@ -336,7 +336,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             parameters.Add( "rows", pageSize );
             return this;
         }
-        static string GetOrderType( int t )
+        static string GetOrderByType( int t )
         {
             return (OrderType) t switch {
                 // language=sql
@@ -346,9 +346,11 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
                 // language=sql
                 OrderType.MostRatings => "p.NumberRatings DESC",
                 // language=sql
-                OrderType.PriceLow => "p.Price ASC, CASE WHEN p.SalePrice = 0 THEN NULL ELSE p.SalePrice END ASC",
+                OrderType.PriceLow => "p.Price ASC, CASE WHEN p.SalePrice = NULL THEN NULL ELSE p.SalePrice END ASC",
                 // language=sql
-                OrderType.PriceHigh => "p.Price DESC, CASE WHEN p.SalePrice = 0 THEN NULL ELSE p.SalePrice END DESC",
+                OrderType.PriceHigh => "p.Price DESC, CASE WHEN p.SalePrice = NULL THEN NULL ELSE p.SalePrice END DESC",
+                // language=sql
+                OrderType.Newest => "p.ReleaseDate DESC",
                 // language=sql
                 _ => "p.NumberSold DESC"
             };
@@ -359,7 +361,8 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             BestRating,
             MostRatings,
             PriceLow,
-            PriceHigh
+            PriceHigh,
+            Newest
         }
     }
 }

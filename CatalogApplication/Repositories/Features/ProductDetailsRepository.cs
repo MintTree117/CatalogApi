@@ -36,7 +36,7 @@ internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRe
         const string sql =
             """
                 SELECT
-                p.Id, p.BrandId, p.Name, p.BrandName, p.Image, p.IsFeatured, p.IsInStock, p.Price, p.SalePrice, p.Rating, p.NumberRatings,
+                p.Id, p.BrandId, p.Name, p.BrandName, p.Image, p.IsFeatured, p.IsInStock, p.Price, p.SalePrice, p.SaleEndDate, p.ReleaseDate, p.Rating, p.NumberRatings,
                 c.CategoryId,
                 pd.Description,
                 px.Xml
