@@ -1,6 +1,7 @@
 using CatalogApplication.Database;
 using CatalogApplication.Types._Common.Geography;
 using CatalogApplication.Types._Common.ReplyTypes;
+using CatalogApplication.Types.Orders;
 using CatalogApplication.Types.Products.Models;
 using CatalogApplication.Types.Warehouses;
 
@@ -26,8 +27,66 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
         _inventories = new MemoryCache<InventoryCache, InventoryRepository>( TimeSpan.FromMinutes( 15 ), RefreshInventories, logger );
     }
     
-    // GET ESTIMATES
-    internal async Task<List<int>> GetDeliveryEstimates( List<Guid> itemIds, AddressDto? deliveryAddress )
+    // VALIDATE ORDER
+    internal async Task<Reply<List<OrderCatalogItemDto>>> ValidateOrder( CatalogOrderDto order )
+    {
+        var warehouses = await GetWarehouses();
+        if (warehouses is null)
+            return Reply<List<OrderCatalogItemDto>>.ServerError();
+        
+        var inventories = await GetInventories();
+        if (inventories is null)
+            return Reply<List<OrderCatalogItemDto>>.ServerError();
+        
+        List<OrderCatalogItemDto> catalogItems = [];
+        bool isValidOrder = true;
+        
+        foreach ( OrderItemDto dto in order.Items )
+        {
+            Guid? warehouseId = GetOrderItemWarehouseId( dto, new AddressDto( order.PosX, order.PosY ), warehouses, inventories );
+            if (warehouseId is null)
+            {
+                isValidOrder = false; // terminate the order   
+                break;
+            }
+
+            OrderCatalogItemDto catalogItem = new() {
+                WarehouseId = warehouseId.Value,
+                ProductId = dto.ProductId,
+                Quantity = dto.Quantity
+            };
+            catalogItems.Add( catalogItem );
+        }
+
+        return isValidOrder
+            ? Reply<List<OrderCatalogItemDto>>.Success( catalogItems )
+            : Reply<List<OrderCatalogItemDto>>.Conflict( "Insufficient stock for order." );
+    }
+    static Guid? GetOrderItemWarehouseId( OrderItemDto item, AddressDto address, List<Warehouse> warehouses, Dictionary<Warehouse, Dictionary<Guid, int>> inventories )
+    {
+        Guid? nearestId = null;
+        double nearestDistance = double.MaxValue;
+        foreach ( Warehouse w in warehouses )
+        {
+            if (!inventories.TryGetValue( w, out var inventory ))
+                continue;
+
+            if (!inventory.TryGetValue( item.ProductId, out int quantity ) || quantity < item.Quantity)
+                continue;
+            
+            double distance = CalculateDistance( address.PosX, address.PosY, w.PosX, w.PosY );
+            if (!(distance < nearestDistance))
+                continue;
+            
+            nearestDistance = distance;
+            nearestId = w.Id;
+        }
+
+        return nearestId;
+    }
+    
+    // SHIPPING ESTIMATES
+    internal async Task<List<int>> GetShippingEstimates( List<Guid> itemIds, AddressDto? deliveryAddress )
     {
         if (deliveryAddress is null)
             return GetDefaultDays( itemIds.Count );
@@ -38,14 +97,14 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
         
         try
         {
-            return await CalculateEstimates( itemIds, deliveryAddress.Value, warehouses );
+            return await CalculateShippingEstimates( itemIds, deliveryAddress.Value, warehouses );
         }
         catch ( Exception e ) {
             LogException( e, "An error occured while executing GetDeliveryEstimateDays()." );
             return GetDefaultDays( itemIds.Count );
         }
     }
-    async Task<List<int>> CalculateEstimates( List<Guid> itemIds, AddressDto deliveryAddress, List<Warehouse> warehouses )
+    async Task<List<int>> CalculateShippingEstimates( List<Guid> itemIds, AddressDto address, List<Warehouse> warehouses )
     {
         var inventories = await GetInventories();
         if (inventories is null)
@@ -56,11 +115,11 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
             List<Warehouse> warehousesToCheck = [];
 
             foreach ( Warehouse w in warehouses )
-                if (CalculateDistance( deliveryAddress.PosX, deliveryAddress.PosY, w.PosX, w.PosY ) < MaxWarehouseCheckRadius)
+                if (CalculateDistance( address.PosX, address.PosY, w.PosX, w.PosY ) < MaxWarehouseCheckRadius)
                     warehousesToCheck.Add( w );
 
             foreach ( Guid i in itemIds )
-                estimates.Add( GetEstimateDays( i, deliveryAddress, warehousesToCheck, inventories ) );
+                estimates.Add( GetEstimateDays( i, address, warehousesToCheck, inventories ) );
 
             return estimates;
         } );

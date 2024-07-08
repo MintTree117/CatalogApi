@@ -62,11 +62,11 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
     internal async Task<Replies<ProductSummaryDto>> SearchIds( List<Guid> productIds )
     {
         // language=sql
-        const string viewSql = "SELECT TOP 10 p.* FROM CatalogApi.Products p WHERE p.Id IN (SELECT Id FROM @productIds)";
+        const string sql = "SELECT TOP 10 p.* FROM CatalogApi.Products p WHERE p.Id IN (SELECT Id FROM @productIds)";
         var idsTable = GetIdsDataTable( productIds );
         var parameters = new DynamicParameters();
         parameters.Add( "productIds", idsTable.AsTableValuedParameter( "CatalogApi.IdsTvp" ) );
-        var reply = await Dapper.QueryAsync<ProductSummaryDto>( viewSql, parameters );
+        var reply = await Dapper.QueryAsync<ProductSummaryDto>( sql, parameters );
         return reply;
     }
     internal async Task<Replies<ProductSuggestionDto>> SearchSuggestions( string searchText )

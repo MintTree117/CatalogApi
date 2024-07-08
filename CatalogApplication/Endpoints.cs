@@ -1,5 +1,7 @@
 using CatalogApplication.Repositories.Features;
 using CatalogApplication.Types._Common.Geography;
+using CatalogApplication.Types._Common.ReplyTypes;
+using CatalogApplication.Types.Orders;
 using CatalogApplication.Types.Products.Dtos;
 using CatalogApplication.Types.Products.Models;
 using CatalogApplication.Utilities;
@@ -19,6 +21,10 @@ internal static class Endpoints
     
     internal static void MapEndpoints( this IEndpointRouteBuilder app )
     {
+        app.MapPost( "api/checkOrder",
+            static async ( [FromBody] CatalogOrderDto dto, InventoryRepository inventory, ProductSearchRepository search ) =>
+                await CheckOrderItems( dto, inventory, search ) );
+        
         app.MapGet( "api/categories",
             static async ( CategoryRepository repository ) =>
                 await GetCategories( repository ) );
@@ -55,7 +61,29 @@ internal static class Endpoints
             static async ( HttpContext http, ProductDetailsRepository details, InventoryRepository inventory ) =>
                 await GetDetails( http, details, inventory ) );
     }
-    
+
+    static async Task<IResult> CheckOrderItems( CatalogOrderDto dto, InventoryRepository inventory, ProductSearchRepository search )
+    {
+        Reply<List<OrderCatalogItemDto>> inventoryReply = await inventory.ValidateOrder( dto );
+        if (!inventoryReply)
+            return Results.Problem( inventoryReply.GetMessage() );
+
+        List<Guid> productIds = dto.Items.Select( 
+            static i => i.ProductId ).ToList();
+
+        Replies<ProductSummaryDto> products = await search.SearchIds( productIds );
+        if (!products)
+            return Results.Problem( products.GetMessage() );
+
+        foreach ( OrderCatalogItemDto item in inventoryReply.Data )
+        {
+            ProductSummaryDto p = products.Enumerable.First( p => p.Id == item.ProductId );
+            item.UnitName = p.Name;
+            item.UnitPrice = p.SalePrice > 0 ? p.SalePrice : p.Price;
+        }
+
+        return Results.Ok( inventoryReply.Data );
+    }
     static async Task<IResult> GetCategories( CategoryRepository repository )
     {
         var result = (await repository.GetCategories()).Data;
@@ -95,7 +123,7 @@ internal static class Endpoints
         if (!searchReply)
             return Results.Problem( searchReply.GetMessage() );
 
-        var results = searchReply.Enumerable.ToList();
+        List<ProductSummaryDto> results = searchReply.Enumerable.ToList();
         await ApplyShippingEstimates( productIds, results, http.Request.Query, inventory );
         return Results.Ok( results );
     }
@@ -158,7 +186,7 @@ internal static class Endpoints
         if (posX is not null && posY is not null)
             address = new AddressDto( posX.Value, posY.Value );
 
-        var estimates = await inventory.GetDeliveryEstimates( productIds, address );
+        var estimates = await inventory.GetShippingEstimates( productIds, address );
         return Results.Ok( estimates );
     }
     static async Task<IResult> GetDetails( HttpContext http, ProductDetailsRepository repository, InventoryRepository inventory )
@@ -180,7 +208,7 @@ internal static class Endpoints
                 ? Results.Ok( reply.Data )
                 : Results.Problem( reply.GetMessage() );
 
-        var shippingDays = await inventory.GetDeliveryEstimates( [reply.Data.Id], address );
+        var shippingDays = await inventory.GetShippingEstimates( [reply.Data.Id], address );
         reply.Data.ShippingDays = shippingDays.FirstOrDefault();
         return Results.Ok( reply.Data );
     }
@@ -192,7 +220,7 @@ internal static class Endpoints
         var posY = Utils.ParseInt( query[PosY] );
         if (posX is not null && posY is not null)
             address = new AddressDto( posX.Value, posX.Value );
-        var estimates = await inventory.GetDeliveryEstimates( productIds, address );
+        var estimates = await inventory.GetShippingEstimates( productIds, address );
         for ( int i = 0; i < results.Count && i < estimates.Count; i++ )
         {
             var dto = results[i];
