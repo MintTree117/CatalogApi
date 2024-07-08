@@ -41,7 +41,7 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
         List<OrderCatalogItemDto> catalogItems = [];
         bool isValidOrder = true;
         
-        foreach ( OrderItemDto dto in order.Items )
+        foreach ( CartItemDto dto in order.Items )
         {
             Guid? warehouseId = GetOrderItemWarehouseId( dto, new AddressDto( order.PosX, order.PosY ), warehouses, inventories );
             if (warehouseId is null)
@@ -62,7 +62,7 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
             ? Reply<List<OrderCatalogItemDto>>.Success( catalogItems )
             : Reply<List<OrderCatalogItemDto>>.Conflict( "Insufficient stock for order." );
     }
-    static Guid? GetOrderItemWarehouseId( OrderItemDto item, AddressDto address, List<Warehouse> warehouses, Dictionary<Warehouse, Dictionary<Guid, int>> inventories )
+    static Guid? GetOrderItemWarehouseId( CartItemDto item, AddressDto address, List<Warehouse> warehouses, Dictionary<Warehouse, Dictionary<Guid, int>> inventories )
     {
         Guid? nearestId = null;
         double nearestDistance = double.MaxValue;

@@ -14,7 +14,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddCors( static options => {
     options.AddDefaultPolicy( static cors => cors
-        .WithOrigins( "https://localhost:7221", "https://localhost:7212" )
+        .WithOrigins( "https://localhost:7221", "https://localhost:7212, https://localhost:7123" )
         .AllowAnyMethod()
         .AllowAnyHeader()
         .AllowCredentials() );
