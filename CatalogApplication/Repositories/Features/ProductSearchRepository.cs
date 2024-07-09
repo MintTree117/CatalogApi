@@ -364,6 +364,8 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
                 // language=sql
                 OrderType.Newest => "p.ReleaseDate DESC",
                 // language=sql
+                OrderType.Oldest => "p.ReleaseDate ASC",
+                // language=sql
                 _ => "p.NumberSold DESC"
             };
         }
@@ -374,7 +376,8 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             MostRatings,
             PriceLow,
             PriceHigh,
-            Newest
+            Newest,
+            Oldest
         }
     }
 }
