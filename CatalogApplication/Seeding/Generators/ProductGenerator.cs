@@ -24,13 +24,11 @@ internal static class ProductGenerator
             for ( int i = 0; i < ProductsPerPrimaryCategory; i++ )
             {
                 Guid productId = Guid.NewGuid();
-                List<Category> sc = 
-                    PickRandomCategories( primaryCategory, secondaryCategories, random );
+                List<Category> sc = PickRandomCategories( primaryCategory, secondaryCategories, random );
                 Brand brand = PickBrand( sc, brands, brandCategories, random );
                 int numSold = PickNumberSold( random );
                 (int,float) rating = PickRating( numSold, random );
-                (ProductXml, XmlElement) px =
-                    GenerateProductXml( productId, primaryCategory, random );
+                (ProductXml, XmlElement) px = GenerateProductXml( productId, primaryCategory, random );
                 DateTime? saleEndDate = PickSaleDate( random );
                 decimal weight = PickWeight( random );
                 string dimensions = "L x W x H";
@@ -333,10 +331,6 @@ internal static class ProductGenerator
     }
     static decimal PickSalePrice( decimal mainPrice, RandomUtility random )
     {
-        bool hasSale = random.GetRandomBool( 0.2 );
-        if (!hasSale)
-            return decimal.Zero;
-
         double maxSalePrice = 0.9 * (double) mainPrice;
         double salePrice = random.GetRandomDouble( maxSalePrice );
         return (decimal) salePrice;
