@@ -214,7 +214,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         // language=sql
         const string SaleSql = " AND p.SalePrice IS NOT NULL";
         // language=sql
-        const string ShippingSql = " AND p.ShippingPrice IS NOT NULL";
+        const string ShippingSql = " AND p.ShippingPrice IS NULL";
         // language=sql
         const string PaginationSql = " OFFSET @offset ROWS FETCH NEXT @rows ROWS ONLY";
         
