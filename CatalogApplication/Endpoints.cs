@@ -154,6 +154,7 @@ internal static class Endpoints
             Utils.ParseBool( query["IsFeatured"] ),
             Utils.ParseBool( query["IsInStock"] ),
             Utils.ParseBool( query["IsOnSale"] ),
+            Utils.ParseBool( query["IsFreeShipping"] ),
             Utils.ParseInt( query[Page] ) ?? 0,
             Utils.ParseInt( query[PageSize] ) ?? FallBackPageSize,
             Utils.ParseInt( query[SortBy] ) ?? 0,

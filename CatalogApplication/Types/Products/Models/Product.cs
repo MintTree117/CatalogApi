@@ -10,8 +10,11 @@ internal sealed record Product(
     bool IsInStock,
     decimal Price,
     decimal? SalePrice,
+    decimal? ShippingPrice,
     DateTime? SaleEndDate,
     DateTime ReleaseDate,
     float Rating,
     int NumberRatings,
-    int NumberSold );
+    int NumberSold,
+    decimal Weight,
+    string Dimensions );

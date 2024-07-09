@@ -32,6 +32,9 @@ internal static class ProductGenerator
                 (ProductXml, XmlElement) px =
                     GenerateProductXml( productId, primaryCategory, random );
                 DateTime? saleEndDate = PickSaleDate( random );
+                decimal weight = PickWeight( random );
+                string dimensions = string.Empty;
+                decimal? shippingPrice = PickShippingPrice( weight, random );
                 Product p = new(
                     productId,
                     brand.Id,
@@ -42,11 +45,14 @@ internal static class ProductGenerator
                     PickIsInStock( random ),
                     PickPrice( random, out decimal price ),
                     saleEndDate is null ? null : PickSalePrice( price, random ),
+                    shippingPrice,
                     saleEndDate,
                     PickReleaseDate( random ),
                     rating.Item2,
                     rating.Item1,
-                    numSold );
+                    numSold,
+                    weight,
+                    dimensions );
                 List<ProductCategory> pc = 
                     GenerateProductCategories( p, sc );
                 ProductDescription pd =
@@ -75,12 +81,15 @@ internal static class ProductGenerator
         table.Columns.Add( nameof( Product.IsFeatured ), typeof( bool ) );
         table.Columns.Add( nameof( Product.IsInStock ), typeof( bool ) );
         table.Columns.Add( nameof( Product.Price ), typeof( decimal ) );
-        table.Columns.Add( nameof( Product.SalePrice ), typeof( decimal? ) );
-        table.Columns.Add( nameof( Product.SaleEndDate ), typeof( DateTime? ) );
+        table.Columns.Add( nameof( Product.SalePrice ), typeof( decimal ) );
+        table.Columns.Add( nameof( Product.ShippingPrice ), typeof( decimal ) );
+        table.Columns.Add( nameof( Product.SaleEndDate ), typeof( DateTime ) );
         table.Columns.Add( nameof( Product.ReleaseDate ), typeof( DateTime ) );
         table.Columns.Add( nameof( Product.Rating ), typeof( float ) );
         table.Columns.Add( nameof( Product.NumberRatings ), typeof( int ) );
         table.Columns.Add( nameof( Product.NumberSold ), typeof( int ) );
+        table.Columns.Add( nameof( Product.Weight ), typeof( decimal ) );
+        table.Columns.Add( nameof( Product.Dimensions ), typeof( string ) );
         
         foreach ( Product p in products ) {
             DataRow row = table.NewRow();
@@ -92,12 +101,15 @@ internal static class ProductGenerator
             row[nameof( Product.IsFeatured )] = p.IsFeatured;
             row[nameof( Product.IsInStock )] = p.IsInStock;
             row[nameof( Product.Price )] = p.Price;
-            row[nameof( Product.SalePrice )] = p.SalePrice;
-            row[nameof( Product.SaleEndDate )] = p.SaleEndDate;
+            row[nameof( Product.SalePrice )] = p.SalePrice.HasValue ? p.SalePrice.Value : DBNull.Value;
+            row[nameof( Product.ShippingPrice )] = p.ShippingPrice.HasValue ? p.ShippingPrice.Value : DBNull.Value;
+            row[nameof( Product.SaleEndDate )] = p.SaleEndDate.HasValue ? p.SaleEndDate.Value : DBNull.Value;
             row[nameof( Product.ReleaseDate )] = p.ReleaseDate;
             row[nameof( Product.Rating )] = p.Rating;
             row[nameof( Product.NumberRatings )] = p.NumberRatings;
             row[nameof( Product.NumberSold )] = p.NumberSold;
+            row[nameof( Product.Weight )] = p.Weight;
+            row[nameof( Product.Dimensions )] = p.Dimensions;
             table.Rows.Add( row );
         }
 
@@ -356,5 +368,48 @@ internal static class ProductGenerator
         int numRatings = random.GetRandomInt( 0, numSold );
         float rating = (float) random.GetRandomDouble( 1, 5 );
         return (numRatings, rating);
+    }
+    static decimal PickWeight( RandomUtility random )
+    {
+        var weight = random.GetRandomDouble( 1, 1000 );
+        return (decimal) weight;
+    }
+    static decimal? PickShippingPrice( decimal weight, RandomUtility random )
+    {
+        double? cost;
+
+        if (weight > 5)
+        {
+            cost = random.GetRandomInt( 1, 100 ) > 90
+                ? 9.99
+                : null;
+            return (decimal?) cost;
+        }
+        if (weight > 10)
+        {
+            cost = random.GetRandomInt( 1, 100 ) > 80
+                ? 12.99
+                : null;
+            return (decimal?) cost;
+        }
+        if (weight > 20)
+        {
+            cost = random.GetRandomInt( 1, 100 ) > 70
+                ? 15.99
+                : null;
+            return (decimal?) cost;
+        }
+        if (weight > 30)
+        {
+            cost = random.GetRandomInt( 1, 100 ) > 50
+                ? 19.99
+                : null;
+            return (decimal?) cost;
+        }
+
+        cost = random.GetRandomInt( 1, 100 ) > 20
+            ? 29.99
+            : null;
+        return (decimal?) cost;
     }
 }

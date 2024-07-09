@@ -154,6 +154,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             .FilterByIsFeatured( filters.IsFeatured.HasValue )
             .FilterByIsInStock( filters.IsInStock.HasValue )
             .FilterByIsOnSale( filters.IsOnSale.HasValue )
+            .FilterByIsFreeShipping( filters.IsFreeShipping.HasValue )
             .FilterByBrands( filters.BrandIds )
             .FilterByCategory( filters.CategoryId )
             .FilterBySearchText( filters.SearchText )
@@ -187,7 +188,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         const string SelectProductsSql =
             """
             SELECT DISTINCT
-                p.Id, p.BrandId, p.Name, p.BrandName, p.Image, p.IsFeatured, p.IsInStock, p.Price, p.SalePrice, p.SaleEndDate, p.ReleaaseDate, p.Rating, p.NumberRatings, p.NumberSold
+                p.Id, p.BrandId, p.Name, p.BrandName, p.Image, p.IsFeatured, p.IsInStock, p.Price, p.SalePrice, p.ShippingPrice, p.SaleEndDate, p.ReleaseDate, p.Rating, p.NumberRatings, p.NumberSold, p.Weight, p.Dimensions,
             FROM CatalogApi.Products p
             """;
         // language=sql
@@ -211,7 +212,9 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         // language=sql
         const string FeaturedSql = " AND p.IsFeatured = 1";
         // language=sql
-        const string SaleSql = " AND p.SalePrice > 0";
+        const string SaleSql = " AND p.SalePrice != NULL";
+        // language=sql
+        const string ShippingSql = " AND p.ShippingPrice = NULL";
         // language=sql
         const string PaginationSql = " OFFSET @offset ROWS FETCH NEXT @rows ROWS ONLY";
         
@@ -273,6 +276,15 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             productBuilder.Append( StockSql );
             countBuilder.Append( StockSql );
             parameters.Add( "isInStock", true );
+            return this;
+        }
+        internal SearchQueryBuilder FilterByIsFreeShipping( bool shouldFilter )
+        {
+            if (!shouldFilter)
+                return this;
+            productBuilder.Append( ShippingSql );
+            countBuilder.Append( ShippingSql );
+            parameters.Add( "isFreeShipping", true );
             return this;
         }
         internal SearchQueryBuilder FilterByCategory( Guid? categoryId = null )

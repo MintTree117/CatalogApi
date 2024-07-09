@@ -15,10 +15,13 @@ internal sealed class ProductSummaryDto
         bool IsInStock,
         decimal Price,
         decimal? SalePrice,
+        decimal? shippingPrice,
         DateTime? SaleEndDate,
         DateTime ReleaseDate,
         float Rating,
         int NumberRatings,
+        decimal Weight,
+        string Dimensions,
         int ShippingDays)
     {
         this.Id = Id;
@@ -34,6 +37,8 @@ internal sealed class ProductSummaryDto
         this.ReleaseDate = ReleaseDate;
         this.Rating = Rating;
         this.NumberRatings = NumberRatings;
+        this.Weight = Weight;
+        this.Dimensions = Dimensions;
         this.ShippingDays = ShippingDays;
     }
     public Guid Id { get; set; }
@@ -49,5 +54,7 @@ internal sealed class ProductSummaryDto
     public DateTime ReleaseDate { get; set; }
     public float Rating { get; set; }
     public int NumberRatings { get; set; }
+    public decimal Weight { get; set; }
+    public string Dimensions { get; set; } = string.Empty;
     public int ShippingDays { get; set; }
 }

@@ -9,6 +9,7 @@ internal readonly record struct SearchFilters(
     bool? IsInStock,
     bool? IsFeatured,
     bool? IsOnSale,
+    bool? IsFreeShipping,
     int Page,
     int PageSize,
     int SortBy,
