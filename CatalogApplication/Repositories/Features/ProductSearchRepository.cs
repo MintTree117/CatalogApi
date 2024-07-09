@@ -188,7 +188,7 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         const string SelectProductsSql =
             """
             SELECT DISTINCT
-                p.Id, p.BrandId, p.Name, p.BrandName, p.Image, p.IsFeatured, p.IsInStock, p.Price, p.SalePrice, p.ShippingPrice, p.SaleEndDate, p.ReleaseDate, p.Rating, p.NumberRatings, p.NumberSold, p.Weight, p.Dimensions,
+                p.Id, p.BrandId, p.Name, p.BrandName, p.Image, p.IsFeatured, p.IsInStock, p.Price, p.SalePrice, p.ShippingPrice, p.SaleEndDate, p.ReleaseDate, p.Rating, p.NumberRatings, p.NumberSold, p.Weight, p.Dimensions
             FROM CatalogApi.Products p
             """;
         // language=sql
@@ -212,9 +212,9 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
         // language=sql
         const string FeaturedSql = " AND p.IsFeatured = 1";
         // language=sql
-        const string SaleSql = " AND p.SalePrice != NULL";
+        const string SaleSql = " AND p.SalePrice IS NOT NULL";
         // language=sql
-        const string ShippingSql = " AND p.ShippingPrice = NULL";
+        const string ShippingSql = " AND p.ShippingPrice IS NOT NULL";
         // language=sql
         const string PaginationSql = " OFFSET @offset ROWS FETCH NEXT @rows ROWS ONLY";
         

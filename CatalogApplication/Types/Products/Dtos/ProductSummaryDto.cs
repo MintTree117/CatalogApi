@@ -15,7 +15,7 @@ internal sealed class ProductSummaryDto
         bool IsInStock,
         decimal Price,
         decimal? SalePrice,
-        decimal? shippingPrice,
+        decimal? ShippingPrice,
         DateTime? SaleEndDate,
         DateTime ReleaseDate,
         float Rating,
@@ -33,6 +33,7 @@ internal sealed class ProductSummaryDto
         this.IsInStock = IsInStock;
         this.Price = Price;
         this.SalePrice = SalePrice;
+        this.ShippingPrice = ShippingPrice;
         this.SaleEndDate = SaleEndDate;
         this.ReleaseDate = ReleaseDate;
         this.Rating = Rating;
@@ -50,6 +51,7 @@ internal sealed class ProductSummaryDto
     public bool IsInStock { get; set; }
     public decimal Price { get; set; }
     public decimal? SalePrice { get; set; }
+    public decimal? ShippingPrice { get; set; }
     public DateTime? SaleEndDate { get; set; }
     public DateTime ReleaseDate { get; set; }
     public float Rating { get; set; }

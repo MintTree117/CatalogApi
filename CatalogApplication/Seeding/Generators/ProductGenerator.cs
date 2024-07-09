@@ -33,7 +33,7 @@ internal static class ProductGenerator
                     GenerateProductXml( productId, primaryCategory, random );
                 DateTime? saleEndDate = PickSaleDate( random );
                 decimal weight = PickWeight( random );
-                string dimensions = string.Empty;
+                string dimensions = "L x W x H";
                 decimal? shippingPrice = PickShippingPrice( weight, random );
                 Product p = new(
                     productId,
@@ -380,28 +380,28 @@ internal static class ProductGenerator
 
         if (weight > 5)
         {
-            cost = random.GetRandomInt( 1, 100 ) > 90
+            cost = random.GetRandomInt( 1, 100 ) > 70
                 ? 9.99
                 : null;
             return (decimal?) cost;
         }
         if (weight > 10)
         {
-            cost = random.GetRandomInt( 1, 100 ) > 80
+            cost = random.GetRandomInt( 1, 100 ) > 60
                 ? 12.99
                 : null;
             return (decimal?) cost;
         }
         if (weight > 20)
         {
-            cost = random.GetRandomInt( 1, 100 ) > 70
+            cost = random.GetRandomInt( 1, 100 ) > 50
                 ? 15.99
                 : null;
             return (decimal?) cost;
         }
         if (weight > 30)
         {
-            cost = random.GetRandomInt( 1, 100 ) > 50
+            cost = random.GetRandomInt( 1, 100 ) > 40
                 ? 19.99
                 : null;
             return (decimal?) cost;
