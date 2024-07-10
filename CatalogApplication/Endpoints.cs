@@ -80,6 +80,8 @@ internal static class Endpoints
             ProductSummaryDto p = products.Enumerable.First( p => p.Id == item.ProductId );
             item.UnitName = p.Name;
             item.UnitPrice = p.SalePrice ?? p.Price;
+            item.UnitDiscount = p.SalePrice.HasValue ? p.Price - p.SalePrice.Value : 0;
+            item.ShippingCost = p.ShippingPrice ?? 0;
         }
 
         return Results.Ok( inventoryReply.Data );
