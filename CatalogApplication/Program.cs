@@ -12,9 +12,9 @@ builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddCors( static options => {
-    options.AddDefaultPolicy( static cors => cors
-        .WithOrigins( "https://localhost:7221", "https://localhost:7212, https://localhost:7123" )
+builder.Services.AddCors( options => {
+    options.AddDefaultPolicy( cors => cors
+        .WithOrigins( builder.Configuration.GetSection( "AllowedOrigins" ).Get<string[]>() ?? throw new Exception( "Failed to get AllowedOrigins from configuration during startup." ) )
         .AllowAnyMethod()
         .AllowAnyHeader()
         .AllowCredentials() );

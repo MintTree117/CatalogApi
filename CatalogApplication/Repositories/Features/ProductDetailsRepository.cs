@@ -7,17 +7,18 @@ namespace CatalogApplication.Repositories.Features;
 
 internal sealed class ProductDetailsRepository : BaseRepository<ProductDetailsRepository>
 {
+    public ProductDetailsRepository( IDapperContext dapper, ILogger<ProductDetailsRepository> logger )
+        : base( dapper, logger )
+    {
+        _timer = new Timer( _ => Cleanup(), null, TimeSpan.Zero, _cacheLifeMinutes );
+    }
+    
     readonly TimeSpan _cacheLifeMinutes = TimeSpan.FromMinutes( 5 );
     readonly object _cacheLock = new();
-    // ReSharper disable once NotAccessedField.Local
     readonly Timer _timer;
     
     Dictionary<Guid, CacheEntry> _cache = [];
     
-    public ProductDetailsRepository( IDapperContext dapper, ILogger<ProductDetailsRepository> logger ) : base( dapper, logger )
-    {
-        _timer = new Timer( _ => Cleanup(), null, TimeSpan.Zero, _cacheLifeMinutes );
-    }
     internal async Task<Reply<ProductDetailsDto>> GetDetails( Guid productId )
     {
         if (_cache.TryGetValue( productId, out CacheEntry entry ) && entry.Valid())

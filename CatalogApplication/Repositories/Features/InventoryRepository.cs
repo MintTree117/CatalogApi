@@ -30,20 +30,25 @@ internal sealed class InventoryRepository : BaseRepository<InventoryRepository>
     // VALIDATE ORDER
     internal async Task<Reply<List<OrderCatalogItemDto>>> ValidateOrder( CatalogOrderDto order )
     {
-        var warehouses = await GetWarehouses();
-        if (warehouses is null)
-            return Reply<List<OrderCatalogItemDto>>.ServerError();
+        var warehousesTask = GetWarehouses();
+        var inventoriesTask = GetInventories();
+
+        await Task.WhenAll( warehousesTask, inventoriesTask );
         
-        var inventories = await GetInventories();
-        if (inventories is null)
-            return Reply<List<OrderCatalogItemDto>>.ServerError();
+        if (warehousesTask.Result is null || inventoriesTask.Result is null)
+        {
+            Logger.LogWarning( $"Null result in ValidateOrder(): WarehouseTaskResult {warehousesTask.Result} : InventoriesTaskResult {inventoriesTask.Result}" );
+            return Reply<List<OrderCatalogItemDto>>.NotFound();
+        }
         
         List<OrderCatalogItemDto> catalogItems = [];
         bool isValidOrder = true;
         
         foreach ( CartItemDto dto in order.Items )
         {
-            Guid? warehouseId = GetOrderItemWarehouseId( dto, new AddressDto( order.PosX, order.PosY ), warehouses, inventories );
+            Guid? warehouseId = GetOrderItemWarehouseId(
+                dto, new AddressDto( order.PosX, order.PosY ), warehousesTask.Result, inventoriesTask.Result );
+            
             if (warehouseId is null)
             {
                 isValidOrder = false; // terminate the order   

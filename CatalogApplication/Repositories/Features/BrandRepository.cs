@@ -39,7 +39,8 @@ internal sealed class BrandRepository : BaseRepository<BrandRepository>
                 return Reply<BrandsDto>.ServerError();
             }
 
-            await using SqlMapper.GridReader reader = await connection.QueryMultipleAsync( sql, commandType: CommandType.Text );
+            await using SqlMapper.GridReader reader = 
+                await connection.QueryMultipleAsync( sql, commandType: CommandType.Text );
             
             var brands = await reader.ReadAsync<Brand>();
             var brandCategories = await reader.ReadAsync<BrandCategory>();
@@ -56,7 +57,7 @@ internal sealed class BrandRepository : BaseRepository<BrandRepository>
             }
             
             LogInformation( "Brands fetched from database." );
-            return Reply<BrandsDto>.Success( 
+            return Reply<BrandsDto>.Success(
                 new BrandsDto( brands.ToList(), brandCategoriesDictionary ) );
         }
         catch ( Exception e ) 

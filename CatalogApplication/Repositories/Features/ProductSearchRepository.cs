@@ -12,27 +12,6 @@ namespace CatalogApplication.Repositories.Features;
 internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<ProductSearchRepository> logger ) 
     : BaseRepository<ProductSearchRepository>( dapper, logger )
 {
-    // language=sql
-    const string SqlTextSearchNewCross =
-        """
-         CROSS APPLY (
-            SELECT value AS ProductWord
-                FROM STRING_SPLIT(p.Name, ' ')
-            UNION ALL
-            SELECT value
-                FROM STRING_SPLIT(p.Name, ',')
-        ) AS SplitProduct
-        """;
-    // language=sql
-    const string SqlTextSearchNewFilter =
-        """
-         EXISTS (
-            SELECT 1
-            FROM STRING_SPLIT(@SearchText, ' ') AS SearchWords
-            WHERE SplitProduct.ProductWord LIKE '%' + SearchWords.value + '%'
-        )
-        """;
-    
     internal async Task<Reply<SearchQueryReply>> SearchFull( SearchFilters filters )
     {
         try 
@@ -45,7 +24,8 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             }
             
             SearchQueryBuilder builder = BuildCatalogSearchSql( filters );
-            await using SqlMapper.GridReader multi = await connection.QueryMultipleAsync( builder.GetSql(), builder.parameters, commandType: CommandType.Text );
+            await using SqlMapper.GridReader multi = 
+                await connection.QueryMultipleAsync( builder.GetSql(), builder.parameters, commandType: CommandType.Text );
             
             SearchQueryReply queryReply = new(
                 await multi.ReadSingleAsync<int>(),
@@ -380,4 +360,25 @@ internal sealed class ProductSearchRepository( IDapperContext dapper, ILogger<Pr
             Oldest
         }
     }
+
+    // language=sql
+    const string SqlTextSearchNewCross =
+        """
+         CROSS APPLY (
+            SELECT value AS ProductWord
+                FROM STRING_SPLIT(p.Name, ' ')
+            UNION ALL
+            SELECT value
+                FROM STRING_SPLIT(p.Name, ',')
+        ) AS SplitProduct
+        """;
+    // language=sql
+    const string SqlTextSearchNewFilter =
+        """
+         EXISTS (
+            SELECT 1
+            FROM STRING_SPLIT(@SearchText, ' ') AS SearchWords
+            WHERE SplitProduct.ProductWord LIKE '%' + SearchWords.value + '%'
+        )
+        """;
 }
