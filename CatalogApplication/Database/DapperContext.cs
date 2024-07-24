@@ -21,7 +21,7 @@ internal sealed class DapperContext : IDapperContext
         _logger = logger;
         try
         {
-            _connectionString = config["ConnectionString"] ?? throw new Exception( "DapperContext failed to get connection string from configuration." );
+            _connectionString = config["SqlString"] ?? throw new Exception( "DapperContext failed to get SqlString from configuration." );
 
             if (!string.IsNullOrEmpty( _connectionString ))
                 _noString = false;
