@@ -2,7 +2,7 @@ namespace CatalogApplication.Seeding.SeedData;
 
 internal static class BrandSeedData
 {
-    internal static Dictionary<string, string[]> BrandsPerCategory = new() {
+    internal static readonly Dictionary<string, string[]> BrandsPerCategory = new() {
         // Computers & Laptops
         {
             CategorySeedData.PrimaryCategories[0], [

@@ -44,3 +44,11 @@ internal sealed class EndpointLogger // Static Singleton
         return str;
     }
 }
+
+internal static class EndpointLoggerConfiguration
+{
+    internal static void UseEndpointLogger( this WebApplication app )
+    {
+        EndpointLogger.InitializeLogger( app.Services.GetRequiredService<ILoggerFactory>() );
+    }
+}

@@ -38,7 +38,7 @@ internal static class ProductGenerator
                     brand.Id,
                     PickName( brand, primaryCategory, i, px.Item2 ),
                     brand.Name,
-                    PickImage( primaryCategory, random ),
+                    PickImage( random ),
                     PickIsFeatured( random ),
                     PickIsInStock( random ),
                     PickPrice( random, out decimal price ),
@@ -318,9 +318,9 @@ internal static class ProductGenerator
             result = result.Substring( 0, NameCharacterLength );
         return result;
     }
-    static string PickImage( Category primaryCategory, RandomUtility random )
+    static string PickImage( RandomUtility random )
     {
-        int i = random.GetRandomInt( 21 );
+        int i = random.GetRandomInt( ProductSeedData.NumberOfProductImages - 1 );
         string image = $"/images/p{i}.jpg";
         return image;
     }
