@@ -2,7 +2,7 @@
 
 This api interacts with 2 other repositories, the [ShoppingApp](https://github.com/MintTree117/ShoppingApp.git) and [OrderingApi](https://github.com/MintTree117/OrderingApi.git), to provide high-performance, read-only access to product and related information.
 
-See the fully deployed application [here](https://happy-bush-0b0f3e80f.5.azurestaticapps.net/)
+See the fully deployed application [here](https://happy-bush-0b0f3e80f.5.azurestaticapps.net/).
 
 ## Features
 
